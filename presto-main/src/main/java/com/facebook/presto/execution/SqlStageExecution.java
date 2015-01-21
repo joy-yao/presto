@@ -73,6 +73,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.facebook.presto.OutputBuffers.INITIAL_EMPTY_OUTPUT_BUFFERS;
@@ -143,6 +144,8 @@ public class SqlStageExecution
 
     // Note: atomic is needed to assure thread safety between constructor and scheduler thread
     private final AtomicReference<Multimap<PlanNodeId, URI>> exchangeLocations = new AtomicReference<>(ImmutableMultimap.<PlanNodeId, URI>of());
+
+    private final AtomicLong peakMemoryReservation = new AtomicLong();
 
     public SqlStageExecution(QueryId queryId,
             LocationFactory locationFactory,
@@ -338,6 +341,10 @@ public class SqlStageExecution
                 outputPositions += taskStats.getOutputPositions();
             }
 
+            if (totalMemoryReservation > peakMemoryReservation.get()) {
+                peakMemoryReservation.set(totalMemoryReservation);
+            }
+
             StageStats stageStats = new StageStats(
                     schedulingComplete.get(),
                     getSplitDistribution.snapshot(),
@@ -354,6 +361,7 @@ public class SqlStageExecution
                     completedDrivers,
 
                     new DataSize(totalMemoryReservation, BYTE).convertToMostSuccinctDataSize(),
+                    new DataSize(peakMemoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
                     new Duration(totalScheduledTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),
                     new Duration(totalCpuTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),
                     new Duration(totalUserTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),

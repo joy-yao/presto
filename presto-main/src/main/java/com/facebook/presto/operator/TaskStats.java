@@ -47,6 +47,7 @@ public class TaskStats
     private final int completedDrivers;
 
     private final DataSize memoryReservation;
+    private final DataSize peakMemoryReservation;
 
     private final Duration totalScheduledTime;
     private final Duration totalCpuTime;
@@ -79,6 +80,7 @@ public class TaskStats
                 0,
                 0,
                 new DataSize(0, BYTE),
+                new DataSize(0, BYTE),
                 new Duration(0, MILLISECONDS),
                 new Duration(0, MILLISECONDS),
                 new Duration(0, MILLISECONDS),
@@ -109,6 +111,7 @@ public class TaskStats
             @JsonProperty("completedDrivers") int completedDrivers,
 
             @JsonProperty("memoryReservation") DataSize memoryReservation,
+            @JsonProperty("peakMemoryReservation") DataSize peakMemoryReservation,
 
             @JsonProperty("totalScheduledTime") Duration totalScheduledTime,
             @JsonProperty("totalCpuTime") Duration totalCpuTime,
@@ -149,6 +152,7 @@ public class TaskStats
         this.completedDrivers = completedDrivers;
 
         this.memoryReservation = checkNotNull(memoryReservation, "memoryReservation is null");
+        this.peakMemoryReservation = checkNotNull(peakMemoryReservation, "peakMemoryReservation is null");
 
         this.totalScheduledTime = checkNotNull(totalScheduledTime, "totalScheduledTime is null");
         this.totalCpuTime = checkNotNull(totalCpuTime, "totalCpuTime is null");
@@ -237,6 +241,12 @@ public class TaskStats
     public DataSize getMemoryReservation()
     {
         return memoryReservation;
+    }
+
+    @JsonProperty
+    public DataSize getPeakMemoryReservation()
+    {
+        return peakMemoryReservation;
     }
 
     @JsonProperty
@@ -333,6 +343,7 @@ public class TaskStats
                 runningPartitionedDrivers,
                 completedDrivers,
                 memoryReservation,
+                peakMemoryReservation,
                 totalScheduledTime,
                 totalCpuTime,
                 totalUserTime,

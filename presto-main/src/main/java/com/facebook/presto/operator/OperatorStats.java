@@ -55,6 +55,7 @@ public class OperatorStats
     private final Duration finishUser;
 
     private final DataSize memoryReservation;
+    private final DataSize peakMemoryReservation;
 
     private final Object info;
 
@@ -85,7 +86,7 @@ public class OperatorStats
             @JsonProperty("finishUser") Duration finishUser,
 
             @JsonProperty("memoryReservation") DataSize memoryReservation,
-
+            @JsonProperty("peakMemoryReservation") DataSize peakMemoryReservation,
             @JsonProperty("info") Object info)
     {
         checkArgument(operatorId >= 0, "operatorId is negative");
@@ -116,7 +117,7 @@ public class OperatorStats
         this.finishUser = checkNotNull(finishUser, "finishUser is null");
 
         this.memoryReservation = checkNotNull(memoryReservation, "memoryReservation is null");
-
+        this.peakMemoryReservation = checkNotNull(peakMemoryReservation, "peakMemoryReservation is null");
         this.info = info;
     }
 
@@ -240,6 +241,12 @@ public class OperatorStats
         return memoryReservation;
     }
 
+    @JsonProperty
+    public DataSize getPeakMemoryReservation()
+    {
+        return peakMemoryReservation;
+    }
+
     @Nullable
     @JsonProperty
     public Object getInfo()
@@ -276,6 +283,7 @@ public class OperatorStats
         long finishUser = this.finishUser.roundTo(NANOSECONDS);
 
         long memoryReservation = this.memoryReservation.toBytes();
+        long peakMemoryReservation = this.peakMemoryReservation.toBytes();
 
         Mergeable<?> base = null;
         if (info instanceof Mergeable) {
@@ -313,6 +321,10 @@ public class OperatorStats
             }
         }
 
+        if (memoryReservation > peakMemoryReservation) {
+            peakMemoryReservation = memoryReservation;
+        }
+
         return new OperatorStats(
                 operatorId,
                 operatorType,
@@ -339,7 +351,7 @@ public class OperatorStats
                 new Duration(finishUser, NANOSECONDS).convertToMostSuccinctTimeUnit(),
 
                 new DataSize(memoryReservation, BYTE).convertToMostSuccinctDataSize(),
-
+                new DataSize(peakMemoryReservation, BYTE).convertToMostSuccinctDataSize(),
                 base);
     }
 

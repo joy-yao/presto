@@ -56,6 +56,7 @@ public class PipelineContext
     private final AtomicInteger completedDrivers = new AtomicInteger();
 
     private final AtomicLong memoryReservation = new AtomicLong();
+    private final AtomicLong peakMemoryReservation = new AtomicLong();
 
     private final Distribution queuedTime = new Distribution();
     private final Distribution elapsedTime = new Distribution();
@@ -203,6 +204,9 @@ public class PipelineContext
         boolean result = taskContext.reserveMemory(bytes);
         if (result) {
             memoryReservation.getAndAdd(bytes);
+            if (memoryReservation.get() > peakMemoryReservation.get()) {
+                peakMemoryReservation.set(memoryReservation.get());
+            }
         }
         return result;
     }
@@ -360,7 +364,7 @@ public class PipelineContext
                 completedDrivers,
 
                 new DataSize(memoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
-
+                new DataSize(peakMemoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
                 queuedTime.snapshot(),
                 elapsedTime.snapshot(),
 

@@ -98,6 +98,8 @@ public class QueryStateMachine
     @GuardedBy("this")
     private Set<Input> inputs = ImmutableSet.of();
 
+    private long peakMemoryReservation = 0;
+
     public QueryStateMachine(QueryId queryId, String query, Session session, URI self, Executor executor)
     {
         this.queryId = checkNotNull(queryId, "queryId is null");
@@ -204,6 +206,10 @@ public class QueryStateMachine
                 }
             }
 
+            if (totalMemoryReservation > peakMemoryReservation) {
+                peakMemoryReservation = totalMemoryReservation;
+            }
+
             StageStats outputStageStats = rootStage.getStageStats();
             outputDataSize += outputStageStats.getOutputDataSize().toBytes();
             outputPositions += outputStageStats.getOutputPositions();
@@ -231,6 +237,7 @@ public class QueryStateMachine
                 completedDrivers,
 
                 new DataSize(totalMemoryReservation, BYTE).convertToMostSuccinctDataSize(),
+                new DataSize(peakMemoryReservation, BYTE).convertToMostSuccinctDataSize(),
                 new Duration(totalScheduledTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),
                 new Duration(totalCpuTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),
                 new Duration(totalUserTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),

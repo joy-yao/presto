@@ -51,6 +51,7 @@ public class TaskContext
     private final DataSize operatorPreAllocatedMemory;
 
     private final AtomicLong memoryReservation = new AtomicLong();
+    private final AtomicLong peakMemoryReservation = new AtomicLong();
 
     private final long createNanos = System.nanoTime();
 
@@ -188,6 +189,9 @@ public class TaskContext
             return false;
         }
         memoryReservation.getAndAdd(bytes);
+        if (memoryReservation.get() > peakMemoryReservation.get()) {
+            peakMemoryReservation.set(memoryReservation.get());
+        }
         return true;
     }
 
@@ -341,6 +345,7 @@ public class TaskContext
                 runningPartitionedDrivers,
                 completedDrivers,
                 new DataSize(memoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
+                new DataSize(peakMemoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
                 new Duration(totalScheduledTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),
                 new Duration(totalCpuTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),
                 new Duration(totalUserTime, NANOSECONDS).convertToMostSuccinctTimeUnit(),

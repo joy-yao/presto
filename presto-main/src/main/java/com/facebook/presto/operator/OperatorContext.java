@@ -72,6 +72,7 @@ public class OperatorContext
     private final AtomicLong finishUserNanos = new AtomicLong();
 
     private final AtomicLong memoryReservation = new AtomicLong();
+    private final AtomicLong peakMemoryReservation = new AtomicLong();
     private final long maxMemoryReservation;
 
     private final AtomicReference<Supplier<Object>> infoSupplier = new AtomicReference<>();
@@ -214,6 +215,10 @@ public class OperatorContext
         if (!result) {
             memoryReservation.getAndAdd(-bytes);
         }
+
+        if (result && newReservation > peakMemoryReservation.get()) {
+            peakMemoryReservation.set(newReservation);
+        }
         return result;
     }
 
@@ -232,6 +237,10 @@ public class OperatorContext
         // currently, operator memory is not be released
         if (delta > 0 && !reserveMemory(delta)) {
             throw new ExceededMemoryLimitException(getMaxMemorySize());
+        }
+
+        if (newMemoryReservation > peakMemoryReservation.get()) {
+            peakMemoryReservation.set(newMemoryReservation);
         }
 
         return newMemoryReservation;
@@ -297,6 +306,7 @@ public class OperatorContext
                 new Duration(finishUserNanos.get(), NANOSECONDS).convertToMostSuccinctTimeUnit(),
 
                 new DataSize(memoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
+                new DataSize(peakMemoryReservation.get(), BYTE).convertToMostSuccinctDataSize(),
                 info);
     }
 
