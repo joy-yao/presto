@@ -411,6 +411,7 @@ class RelationPlanner
     {
         TupleDescriptor descriptor = analysis.getOutputDescriptor(node);
         ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
+        //FIXME: we need to get all fields?
         for (Field field : descriptor.getVisibleFields()) {
             Symbol symbol = symbolAllocator.newSymbol(field);
             outputSymbolsBuilder.add(symbol);

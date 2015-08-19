@@ -24,6 +24,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReference;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.ExistsPredicate;
 import com.facebook.presto.sql.tree.Expression;
@@ -106,6 +107,13 @@ public final class ExpressionFormatter
         {
             throw new UnsupportedOperationException(String.format("not yet implemented: %s.visit%s", getClass().getName(), node.getClass().getSimpleName()));
         }
+
+//        //FIXME:
+//        @Override
+//        protected String visitExpression(DeReference node, Boolean unmangleNames)
+//        {
+//            throw new UnsupportedOperationException(String.format("not yet implemented: %s.visit%s", getClass().getName(), node.getClass().getSimpleName()));
+//        }
 
         @Override
         protected String visitCurrentTime(CurrentTime node, Boolean unmangleNames)
@@ -227,6 +235,12 @@ public final class ExpressionFormatter
             return formatQualifiedName(node.getName());
         }
 
+        @Override
+        protected String visitDeReference(DeReference node, Boolean unmangleNames)
+        {
+            return formatDeReferencedName(node);
+        }
+
         private static String formatQualifiedName(QualifiedName name)
         {
             List<String> parts = new ArrayList<>();
@@ -234,6 +248,11 @@ public final class ExpressionFormatter
                 parts.add(formatIdentifier(part));
             }
             return Joiner.on('.').join(parts);
+        }
+
+        private static String formatDeReferencedName(DeReference deReference)
+        {
+            return deReference.getName();
         }
 
         @Override

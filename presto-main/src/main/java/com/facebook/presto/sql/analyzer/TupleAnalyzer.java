@@ -574,6 +574,15 @@ public class TupleAnalyzer
         }
     }
 
+//    private void getRowTypeTypes(RowType rowType, ImmutableList.Builder<Type> typeBuilder) {
+//        typeBuilder.add(rowType);
+//        for (Type subType: rowType.getTypeParameters()) {
+//            if (subType instanceof RowType) {
+//                getRowTypeTypes((RowType)subType, typeBuilder);
+//            }
+//        }
+//    }
+//
     @Override
     protected TupleDescriptor visitValues(Values node, AnalysisContext context)
     {
@@ -584,6 +593,9 @@ public class TupleAnalyzer
                 .map(row -> analyzeExpression(row, new TupleDescriptor(), context).getType(row))
                 .map(type -> {
                     if (type instanceof RowType) {
+//                        ImmutableList.Builder<Type> typeBuilder = new ImmutableList.Builder<>();
+//                        getRowTypeTypes((RowType) type, typeBuilder);
+//                        return typeBuilder.build();
                         return type.getTypeParameters();
                     }
                     return ImmutableList.of(type);

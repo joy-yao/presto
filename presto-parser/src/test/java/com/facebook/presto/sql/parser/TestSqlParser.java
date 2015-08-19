@@ -691,6 +691,62 @@ public class TestSqlParser
     }
 
     @Test
+    public void testSelect()
+            throws Exception
+    {
+        assertStatement("SELECT col1, col2 FROM table1",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(new QualifiedNameReference(QualifiedName.of("col1")), new QualifiedNameReference(QualifiedName.of("col2"))),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty()),
+                        ImmutableList.<SortItem>of(),
+                        Optional.empty(),
+                        Optional.empty()));
+    }
+
+    @Test
+    public void testSelectWithRowType()
+        throws Exception
+    {
+//        assertStatement("SELECT col1.f1, col2 FROM table1",
+//                new Query(
+//                        Optional.empty(),
+//                        new QuerySpecification(
+//                                selectList(new QualifiedNameReference(QualifiedName.of("col1", "f1")), new QualifiedNameReference(QualifiedName.of("col2"))),
+//                                Optional.of(new Table(QualifiedName.of("table1"))),
+//                                Optional.empty(),
+//                                ImmutableList.of(),
+//                                Optional.empty(),
+//                                ImmutableList.of(),
+//                                Optional.empty()),
+//                        ImmutableList.<SortItem>of(),
+//                        Optional.empty(),
+//                        Optional.empty()));
+//
+//        assertStatement("SELECT col1.f1[0], col2 FROM table1",
+//                new Query(
+//                        Optional.empty(),
+//                        new QuerySpecification(
+//                                selectList(new QualifiedNameReference(QualifiedName.of("col1", "f1")), new QualifiedNameReference(QualifiedName.of("col2"))),
+//                                Optional.of(new Table(QualifiedName.of("table1"))),
+//                                Optional.empty(),
+//                                ImmutableList.of(),
+//                                Optional.empty(),
+//                                ImmutableList.of(),
+//                                Optional.empty()),
+//                        ImmutableList.<SortItem>of(),
+//                        Optional.empty(),
+//                        Optional.empty()));
+
+    }
+
+    @Test
     public void testCreateTable()
             throws Exception
     {

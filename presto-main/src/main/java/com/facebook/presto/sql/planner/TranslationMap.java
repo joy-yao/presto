@@ -17,6 +17,7 @@ import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.analyzer.Analysis;
 import com.facebook.presto.sql.analyzer.FieldOrExpression;
 import com.facebook.presto.sql.tree.Cast;
+import com.facebook.presto.sql.tree.DeReference;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
@@ -198,10 +199,10 @@ class TranslationMap
 
                 Expression rewrittenExpression = new QualifiedNameReference(symbol.toQualifiedName());
 
-                if (analysis.isRowFieldReference(node)) {
-                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getName().getSuffix()));
-                    rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenExpression));
-                }
+//                if (analysis.isRowFieldReference(node)) {
+//                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getName().getSuffix()));
+//                    rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenExpression));
+//                }
 
                 // cast expression if coercion is registered
                 Type coercion = analysis.getCoercion(node);
@@ -210,6 +211,69 @@ class TranslationMap
                 }
 
                 return rewrittenExpression;
+            }
+
+            @Override
+            public Expression rewriteDeReference(DeReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+            {
+                if (analysis.isRowFieldReference(node)) {
+                    return rewrite(node, context, treeRewriter);
+                }
+
+                // Otherwise, it is schema.table.column
+                String name = node.getName();
+                Integer fieldIndex = resolvedNames.get(name);
+                Preconditions.checkState(fieldIndex != null, "No field mapping for name '%s'", name);
+
+                Symbol symbol = rewriteBase.getSymbol(fieldIndex);
+                Preconditions.checkState(symbol != null, "No symbol mapping for name '%s' (%s)", name, fieldIndex);
+                Expression rewrittenExpression = new QualifiedNameReference(symbol.toQualifiedName());
+
+//                if (analysis.isRowFieldReference(node)) {
+//                    Expression base = rewrite(node.getBase());
+//                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getFieldName()));
+//                    rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(base));
+//                }
+
+                // cast expression if coercion is registered
+                Type coercion = analysis.getCoercion(node);
+                if (coercion != null) {
+                    rewrittenExpression = new Cast(rewrittenExpression, coercion.getTypeSignature().toString());
+                }
+
+                return rewrittenExpression;
+            }
+
+            private Expression rewrite(Expression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+            {
+                if (node instanceof QualifiedNameReference) {
+//                    String name = node instanceof DeReference ? ((DeReference) node).getName() : ((QualifiedNameReference) node).getName().toString();
+//                    Integer fieldIndex = resolvedNames.get(name);
+//                    Preconditions.checkState(fieldIndex != null, "No field mapping for name '%s'", name);
+//                    Symbol symbol = rewriteBase.getSymbol(fieldIndex);
+//                    Preconditions.checkState(symbol != null, "No symbol mapping for name '%s' (%s)", name, fieldIndex);
+//                    Expression rewrittenExpression = new QualifiedNameReference(symbol.toQualifiedName());
+//
+//                    return rewrittenExpression;
+                    return rewriteQualifiedNameReference((QualifiedNameReference) node, context, treeRewriter);
+                }
+
+                // Otherwise it must be DeReference type
+                //FXIME: it can be either a mix of schema.table.column, and the rowtypes.
+                // FIXME: add checks
+                DeReference deReference = (DeReference) node;
+                if (analysis.isRowFieldReference(deReference)) {
+                    Expression base = rewrite(deReference.getBase(), context, treeRewriter);
+                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(deReference.getFieldName()));
+                    return new FunctionCall(mangledName, ImmutableList.of(base));
+                }
+                else {
+                    // If it is not row fieldReference, then it must be schema.table.column1 etc.
+                    // FIXME here.
+                }
+
+                // FIXME: what if it is the schemaName.tableName?
+                throw new RuntimeException("fixme.");
             }
         }, expression);
     }

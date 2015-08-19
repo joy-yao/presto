@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.sql.analyzer;
 
+import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.QualifiedName;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
@@ -139,6 +140,16 @@ public class TupleDescriptor
      * Gets the index of all columns matching the specified name
      */
     public List<Field> resolveFields(QualifiedName name)
+    {
+        return allFields.stream()
+                .filter(input -> input.canResolve(name))
+                .collect(toImmutableList());
+    }
+
+    /**
+     * Gets the index of all columns matching the specified name
+     */
+    public List<Field> resolveFields(Expression name)
     {
         return allFields.stream()
                 .filter(input -> input.canResolve(name))

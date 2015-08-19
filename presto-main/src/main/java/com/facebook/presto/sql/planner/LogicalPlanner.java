@@ -89,6 +89,8 @@ public class LogicalPlanner
 
         PlanNode root = createOutputPlan(plan, analysis);
 
+//        System.out.println(PlanPrinter.textLogicalPlan(plan.getRoot(), root.getTypes(), metadata, session));
+
         // make sure we produce a valid plan. This is mainly to catch programming errors
         PlanSanityChecker.validate(root);
 

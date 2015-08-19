@@ -30,6 +30,7 @@ import com.facebook.presto.sql.tree.CreateTable;
 import com.facebook.presto.sql.tree.CreateTableAsSelect;
 import com.facebook.presto.sql.tree.CreateView;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReference;
 import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.DropTable;
@@ -121,8 +122,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static com.facebook.presto.sql.QueryUtil.mangleFieldReference;
 
 class AstBuilder
         extends SqlBaseBaseVisitor<Node>
@@ -829,22 +828,21 @@ class AstBuilder
     }
 
     @Override
-    public Node visitFieldReference(SqlBaseParser.FieldReferenceContext context)
+    public Node visitDeReference(SqlBaseParser.DeReferenceContext context)
     {
-        // TODO: This should be done during the conversion to RowExpression
-        return new FunctionCall(new QualifiedName(mangleFieldReference(context.fieldName.getText())), ImmutableList.of((Expression) visit(context.value)));
+        if (context.base == null) {
+            return new QualifiedNameReference(getQualifiedName(context.fieldName));
+        }
+        Expression base = (Expression) visit(context.base);
+        //FIXME: handle subscript here.
+        return new DeReference(base, context.fieldName.getText());
+        //        return new FunctionCall(new QualifiedName(mangleFieldReference(context.fieldName.getText())), ImmutableList.of((Expression) visit(context.value)));
     }
 
     @Override
     public Node visitSubqueryExpression(SqlBaseParser.SubqueryExpressionContext context)
     {
         return new SubqueryExpression((Query) visit(context.query()));
-    }
-
-    @Override
-    public Node visitColumnReference(SqlBaseParser.ColumnReferenceContext context)
-    {
-        return new QualifiedNameReference(getQualifiedName(context.qualifiedName()));
     }
 
     @Override
@@ -1086,6 +1084,11 @@ class AstBuilder
                 .collect(Collectors.toList());
 
         return new QualifiedName(parts);
+    }
+
+    private static QualifiedName getQualifiedName(SqlBaseParser.IdentifierContext context)
+    {
+        return new QualifiedName(context.getText());
     }
 
     private static boolean isDistinct(SqlBaseParser.SetQuantifierContext setQuantifier)

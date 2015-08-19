@@ -35,6 +35,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReference;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
@@ -82,6 +83,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
 import java.util.function.Function;
 
 import static com.facebook.presto.metadata.FunctionRegistry.canCoerce;
@@ -282,8 +284,7 @@ public class ExpressionAnalyzer
         {
             List<Field> matches = tupleDescriptor.resolveFields(node.getName());
             if (matches.isEmpty()) {
-                // TODO This is kind of hacky, instead we should change the way QualifiedNameReferences are parsed
-                return tryVisitRowFieldAccessor(node);
+                throw createMissingAttributeException(node);
             }
             if (matches.size() > 1) {
                 throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
@@ -297,13 +298,98 @@ public class ExpressionAnalyzer
             return field.getType();
         }
 
-        private Type tryVisitRowFieldAccessor(QualifiedNameReference node)
+        @Override
+        protected Type visitDeReference(DeReference node, AnalysisContext context)
         {
-            if (node.getName().getParts().size() < 2) {
-                throw createMissingAttributeException(node);
+            List<Field> matches = tupleDescriptor.resolveFields(node);
+            if (matches.isEmpty()) {
+                // TODO This is kind of hacky, instead we should change the way QualifiedNameReferences are parsed
+                return tryVisitRowFieldAccessor(node, context);
             }
-            QualifiedName base = new QualifiedName(node.getName().getParts().subList(0, node.getName().getParts().size() - 1));
+            if (matches.size() > 1) {
+                throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
+            }
+            return null;
+
+//          FIXME: put the QualifiedName
+//           Field field = Iterables.getOnlyElement(matches);
+//            int fieldIndex = tupleDescriptor.indexOf(field);
+//            resolvedNames.put(node.getName(), fieldIndex);
+//            expressionTypes.put(node, field.getType());
+//            return field.getType();
+        }
+//
+//        private Type tryVisitRowFieldAccessor(QualifiedNameReference node)
+//        {
+//            if (node.getName().getParts().size() < 2) {
+//                throw createMissingAttributeException(node);
+//            }
+//            QualifiedName base = new QualifiedName(node.getName().getParts().subList(0, node.getName().getParts().size() - 1));
+//            List<Field> matches = tupleDescriptor.resolveFields(base);
+//            if (matches.isEmpty()) {
+//                throw createMissingAttributeException(node);
+//            }
+//            if (matches.size() > 1) {
+//                throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
+//            }
+//
+//            Field field = Iterables.getOnlyElement(matches);
+//            if (field.getType() instanceof RowType) {
+//                RowType rowType = checkType(field.getType(), RowType.class, "field.getType()");
+//                Type rowFieldType = null;
+//                for (RowField rowField : rowType.getFields()) {
+//                    if (rowField.getName().equals(Optional.of(node.getName().getSuffix()))) {
+//                        rowFieldType = rowField.getType();
+//                        break;
+//                    }
+//                }
+//                if (rowFieldType == null) {
+//                    throw createMissingAttributeException(node);
+//                }
+//                int fieldIndex = tupleDescriptor.indexOf(field);
+//                resolvedNames.put(node.getName(), fieldIndex);
+//                expressionTypes.put(node, rowFieldType);
+//                rowFieldReferences.put(node, true);
+//
+//                return rowFieldType;
+//            }
+//            throw createMissingAttributeException(node);
+//        }
+//
+//
+
+        private Type tryVisitRowFieldAccessor(DeReference node, AnalysisContext context)
+        {
+//            if (node.getName().getParts().size() < 2) {
+//                throw createMissingAttributeException(node);
+//            }
+//            QualifiedName base = new QualifiedName(node.getName().getParts().subList(0, node.getName().getParts().size() - 1));
+
+            //FIXME: now we can move this method to the caller..
+            Expression base = node.getBase();
+            // FIXME: add subscript
+            if (base instanceof QualifiedNameReference) {
+                visitQualifiedNameReference((QualifiedNameReference)base, context);
+            }
+            else {
+                visitDeReference((DeReference)base, context);
+            }
             List<Field> matches = tupleDescriptor.resolveFields(base);
+
+            int index = 1;
+            IdentityHashMap<Expression, Boolean> rowFieldReferences2 = new IdentityHashMap<>();
+            rowFieldReferences2.put(node, true);
+            while (matches.isEmpty() && (base instanceof DeReference || base instanceof SubscriptExpression)) {
+                // FIXME: add subscript here.
+                rowFieldReferences2.put(base, true);
+                base = ((DeReference) base).getBase();
+                if (base == null) {
+                    break;
+                }
+                matches = tupleDescriptor.resolveFields(base);
+                index ++;
+            }
+
             if (matches.isEmpty()) {
                 throw createMissingAttributeException(node);
             }
@@ -312,22 +398,51 @@ public class ExpressionAnalyzer
             }
 
             Field field = Iterables.getOnlyElement(matches);
+//            int fieldIndex = tupleDescriptor.indexOf(field);
+//            resolvedNames.put(((QualifiedNameReference)base).getName(), fieldIndex);
+
+            DeReference basebase = node;
+            Stack<String> stack = new Stack<>();
+            for (int i = 1; i <= index; i++) {
+                stack.push(basebase.getFieldName());
+                if (i < index) {
+                    basebase = (DeReference) basebase.getBase();
+                }
+            }
+
+
+            // FIXME: recursively find the type.
+
             if (field.getType() instanceof RowType) {
                 RowType rowType = checkType(field.getType(), RowType.class, "field.getType()");
                 Type rowFieldType = null;
-                for (RowField rowField : rowType.getFields()) {
-                    if (rowField.getName().equals(Optional.of(node.getName().getSuffix()))) {
-                        rowFieldType = rowField.getType();
-                        break;
+                List<RowField> rowFields = rowType.getFields();
+                while (!stack.isEmpty()) {
+                    String name = stack.pop();
+                    for (RowField rowField : rowFields) {
+                        if (rowField.getName().equals(Optional.of(name))) {
+                            if (stack.isEmpty()) {
+                                rowFieldType = rowField.getType();
+                            }
+                            if (!stack.isEmpty()) {
+                                rowFields = ((RowType)rowField.getType()).getFields();
+                            }
+                            expressionTypes.put(node, rowField.getType());
+//                            int fieldIndex = tupleDescriptor.indexOf(field);
+//                            resolvedNames.put(node.getName(), fieldIndex);
+//                            resolvedNames.put(node.getName(), fieldIndex);
+                            break;
+                        }
                     }
                 }
                 if (rowFieldType == null) {
                     throw createMissingAttributeException(node);
                 }
-                int fieldIndex = tupleDescriptor.indexOf(field);
-                resolvedNames.put(node.getName(), fieldIndex);
-                expressionTypes.put(node, rowFieldType);
-                rowFieldReferences.put(node, true);
+//                int fieldIndex = tupleDescriptor.indexOf(field);
+//                resolvedNames.put(node.getName(), fieldIndex);
+//                expressionTypes.put(node, rowFieldType);
+
+                rowFieldReferences.putAll(rowFieldReferences2);
 
                 return rowFieldType;
             }
@@ -335,6 +450,11 @@ public class ExpressionAnalyzer
         }
 
         private SemanticException createMissingAttributeException(QualifiedNameReference node)
+        {
+            return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node.getName());
+        }
+
+        private SemanticException createMissingAttributeException(DeReference node)
         {
             return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node.getName());
         }
@@ -834,7 +954,8 @@ public class ExpressionAnalyzer
         {
             ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
             for (Expression expression : arguments) {
-                argumentTypes.add(process(expression, context));
+                Type type = process(expression, context);
+                argumentTypes.add(type);
             }
 
             FunctionInfo operatorInfo;
