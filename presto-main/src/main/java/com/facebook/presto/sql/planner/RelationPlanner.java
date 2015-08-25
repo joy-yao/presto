@@ -43,6 +43,7 @@ import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
@@ -50,7 +51,6 @@ import com.facebook.presto.sql.tree.InPredicate;
 import com.facebook.presto.sql.tree.Join;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Relation;
@@ -316,7 +316,7 @@ class RelationPlanner
             ImmutableMap.Builder<Symbol, Expression> projections = ImmutableMap.builder();
             projections.put(sampleWeight.get(), expression);
             for (Symbol symbol : root.getOutputSymbols()) {
-                projections.put(symbol, new QualifiedNameReference(symbol.toQualifiedName()));
+                projections.put(symbol, new DeReferenceExpression(symbol.getName()));
             }
             root = new ProjectNode(idAllocator.getNextId(), root, projections.build());
         }
@@ -367,7 +367,7 @@ class RelationPlanner
     private static Expression oneIfNull(Optional<Symbol> symbol)
     {
         if (symbol.isPresent()) {
-            return new CoalesceExpression(new QualifiedNameReference(symbol.get().toQualifiedName()), new LongLiteral("1"));
+            return new CoalesceExpression(new DeReferenceExpression(symbol.get().getName()), new LongLiteral("1"));
         }
         else {
             return new LongLiteral("1");
@@ -500,13 +500,13 @@ class RelationPlanner
             Type inputType = symbolAllocator.getTypes().get(inputSymbol);
             Type outputType = coerceToTypes[i];
             if (outputType != inputType) {
-                Cast cast = new Cast(new QualifiedNameReference(inputSymbol.toQualifiedName()), outputType.getTypeSignature().toString());
+                Cast cast = new Cast(new DeReferenceExpression(inputSymbol.getName()), outputType.getTypeSignature().toString());
                 Symbol outputSymbol = symbolAllocator.newSymbol(cast, outputType);
                 assignments.put(outputSymbol, cast);
                 newSymbols.add(outputSymbol);
             }
             else {
-                assignments.put(inputSymbol, new QualifiedNameReference(inputSymbol.toQualifiedName()));
+                assignments.put(inputSymbol, new DeReferenceExpression(inputSymbol.getName()));
                 newSymbols.add(inputSymbol);
             }
             Field oldField = oldDescriptor.getFieldByIndex(i);
@@ -583,7 +583,7 @@ class RelationPlanner
     {
         ImmutableMap.Builder<Symbol, Expression> projections = ImmutableMap.builder();
         for (Symbol symbol : subPlan.getOutputSymbols()) {
-            Expression expression = new QualifiedNameReference(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.getName());
             projections.put(symbol, expression);
         }
         Expression one = new LongLiteral("1");
@@ -616,7 +616,7 @@ class RelationPlanner
 
         // add an identity projection for underlying plan
         for (Symbol symbol : subPlan.getRoot().getOutputSymbols()) {
-            Expression expression = new QualifiedNameReference(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.getName());
             projections.put(symbol, expression);
         }
 

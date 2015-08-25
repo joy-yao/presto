@@ -25,6 +25,7 @@ import com.facebook.presto.sql.tree.CreateTable;
 import com.facebook.presto.sql.tree.CreateTableAsSelect;
 import com.facebook.presto.sql.tree.CreateView;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.DropTable;
@@ -50,7 +51,6 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.RenameColumn;
@@ -664,30 +664,31 @@ public class TestSqlParser
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
                         ImmutableList.of(),
                         Optional.empty()));
 
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1 ORDER BY y",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
-                        ImmutableList.of(new SortItem(new QualifiedNameReference(QualifiedName.of("y")), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
+                        ImmutableList.of(new SortItem(new DeReferenceExpression("y"), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
                         Optional.empty()));
 
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1 ORDER BY y LIMIT 10",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
-                        ImmutableList.of(new SortItem(new QualifiedNameReference(QualifiedName.of("y")), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
+                        ImmutableList.of(new SortItem(new DeReferenceExpression("y"), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
                         Optional.of("10")));
 
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1 ORDER BY y LIMIT ALL",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
-                        ImmutableList.of(new SortItem(new QualifiedNameReference(QualifiedName.of("y")), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
+                        ImmutableList.of(new SortItem(new DeReferenceExpression("y"), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
                         Optional.of("ALL")));
+
     }
 
     @Test
@@ -772,8 +773,8 @@ public class TestSqlParser
 
         assertStatement("DELETE FROM t WHERE a = b", new Delete(table(QualifiedName.of("t")), Optional.of(
                 new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                        new QualifiedNameReference(QualifiedName.of("a")),
-                        new QualifiedNameReference(QualifiedName.of("b"))))));
+                        new DeReferenceExpression("a"),
+                        new DeReferenceExpression("b")))));
     }
 
     @Test
@@ -907,7 +908,7 @@ public class TestSqlParser
                         new Join(
                                 Join.Type.CROSS,
                                 new Table(QualifiedName.of("t")),
-                                new Unnest(ImmutableList.of(new QualifiedNameReference(QualifiedName.of("a"))), false),
+                                new Unnest(ImmutableList.of(new DeReferenceExpression("a")), false),
                                 Optional.empty())));
         assertStatement("SELECT * FROM t CROSS JOIN UNNEST(a) WITH ORDINALITY",
                 simpleQuery(
@@ -915,7 +916,7 @@ public class TestSqlParser
                         new Join(
                                 Join.Type.CROSS,
                                 new Table(QualifiedName.of("t")),
-                                new Unnest(ImmutableList.of(new QualifiedNameReference(QualifiedName.of("a"))), true),
+                                new Unnest(ImmutableList.of(new DeReferenceExpression("a")), true),
                                 Optional.empty())));
     }
 

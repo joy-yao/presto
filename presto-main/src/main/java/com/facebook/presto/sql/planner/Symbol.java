@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.sql.planner;
 
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.base.Preconditions;
@@ -44,15 +44,15 @@ public class Symbol
         return QualifiedName.of(name);
     }
 
-    public QualifiedNameReference toQualifiedNameReference()
+    public DeReferenceExpression toDeReference()
     {
-        return new QualifiedNameReference(toQualifiedName());
+        return new DeReferenceExpression(name);
     }
 
-    public static Symbol fromQualifiedName(QualifiedName name)
+    public static Symbol fromDeReference(DeReferenceExpression expression)
     {
-        Preconditions.checkArgument(!name.getPrefix().isPresent(), "Can't create a symbol from a qualified name with prefix");
-        return new Symbol(name.getSuffix());
+        Preconditions.checkArgument(!expression.getBase().isPresent(), "Can't create a symbol from a DeReferenceExpression with prefix");
+        return new Symbol(expression.getFieldName());
     }
 
     @Override

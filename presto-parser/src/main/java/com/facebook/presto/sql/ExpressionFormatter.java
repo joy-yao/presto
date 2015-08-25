@@ -24,6 +24,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.ExistsPredicate;
 import com.facebook.presto.sql.tree.Expression;
@@ -46,7 +47,6 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -222,9 +222,9 @@ public final class ExpressionFormatter
         }
 
         @Override
-        protected String visitQualifiedNameReference(QualifiedNameReference node, Boolean unmangleNames)
+        protected String visitDeReference(DeReferenceExpression node, Boolean unmangleNames)
         {
-            return formatQualifiedName(node.getName());
+            return formatQualifiedName(node.getLongestQualifiedName());
         }
 
         private static String formatQualifiedName(QualifiedName name)

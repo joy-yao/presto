@@ -61,10 +61,10 @@ import com.facebook.presto.sql.planner.plan.UnionNode;
 import com.facebook.presto.sql.planner.plan.ValuesNode;
 import com.facebook.presto.sql.planner.plan.WindowNode;
 import com.facebook.presto.sql.tree.BooleanLiteral;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.NullLiteral;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -301,7 +301,7 @@ public class AddExchanges
                 }
 
                 // rewrite final aggregation in terms of intermediate function
-                finalCalls.put(entry.getKey(), new FunctionCall(function.getName(), ImmutableList.<Expression>of(new QualifiedNameReference(intermediateSymbol.toQualifiedName()))));
+                finalCalls.put(entry.getKey(), new FunctionCall(function.getName(), ImmutableList.<Expression>of(new DeReferenceExpression(intermediateSymbol.getName()))));
             }
 
             PlanWithProperties partial = withDerivedProperties(
@@ -1010,8 +1010,8 @@ public class AddExchanges
     {
         Map<Symbol, Symbol> outputToInput = new HashMap<>();
         for (Map.Entry<Symbol, Expression> assignment : assignments.entrySet()) {
-            if (assignment.getValue() instanceof QualifiedNameReference) {
-                outputToInput.put(assignment.getKey(), Symbol.fromQualifiedName(((QualifiedNameReference) assignment.getValue()).getName()));
+            if (assignment.getValue() instanceof DeReferenceExpression) {
+                outputToInput.put(assignment.getKey(), Symbol.fromDeReference(((DeReferenceExpression) assignment.getValue())));
             }
         }
         return outputToInput;

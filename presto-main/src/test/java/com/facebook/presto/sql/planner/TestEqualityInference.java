@@ -16,9 +16,9 @@ package com.facebook.presto.sql.planner;
 import com.facebook.presto.sql.ExpressionUtils;
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -359,9 +359,9 @@ public class TestEqualityInference
         return new ComparisonExpression(EQUAL, expression1, expression2);
     }
 
-    private static QualifiedNameReference nameReference(String symbol)
+    private static DeReferenceExpression nameReference(String symbol)
     {
-        return new QualifiedNameReference(new Symbol(symbol).toQualifiedName());
+        return new DeReferenceExpression(symbol);
     }
 
     private static LongLiteral number(long number)

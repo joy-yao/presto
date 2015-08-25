@@ -13,10 +13,10 @@
  */
 package com.facebook.presto.sql.planner;
 
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 
 import java.util.Map;
 
@@ -31,8 +31,8 @@ public class ExpressionSymbolInliner
     }
 
     @Override
-    public Expression rewriteQualifiedNameReference(QualifiedNameReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+    public Expression rewriteDeReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
     {
-        return mappings.get(Symbol.fromQualifiedName(node.getName()));
+        return mappings.get(Symbol.fromDeReference(node));
     }
 }

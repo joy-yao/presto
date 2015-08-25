@@ -23,6 +23,7 @@ import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.planner.DomainTranslator.ExtractionResult;
 import com.facebook.presto.sql.tree.BetweenPredicate;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
@@ -33,7 +34,6 @@ import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.StringLiteral;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -941,9 +941,9 @@ public class TestDomainTranslator
         return comparison(GREATER_THAN, reference(symbol), new FunctionCall(new QualifiedName("rand"), ImmutableList.<Expression>of()));
     }
 
-    private static QualifiedNameReference reference(Symbol symbol)
+    private static DeReferenceExpression reference(Symbol symbol)
     {
-        return new QualifiedNameReference(symbol.toQualifiedName());
+        return new DeReferenceExpression(symbol.getName());
     }
 
     private static NotExpression not(Expression expression)

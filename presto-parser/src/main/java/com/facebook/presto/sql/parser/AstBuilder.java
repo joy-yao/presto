@@ -30,6 +30,7 @@ import com.facebook.presto.sql.tree.CreateTable;
 import com.facebook.presto.sql.tree.CreateTableAsSelect;
 import com.facebook.presto.sql.tree.CreateView;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.DropTable;
@@ -66,7 +67,6 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 import com.facebook.presto.sql.tree.QuerySpecification;
@@ -829,22 +829,24 @@ class AstBuilder
     }
 
     @Override
-    public Node visitFieldReference(SqlBaseParser.FieldReferenceContext context)
-    {
-        // TODO: This should be done during the conversion to RowExpression
-        return new FunctionCall(new QualifiedName(mangleFieldReference(context.fieldName.getText())), ImmutableList.of((Expression) visit(context.value)));
-    }
-
-    @Override
     public Node visitSubqueryExpression(SqlBaseParser.SubqueryExpressionContext context)
     {
         return new SubqueryExpression((Query) visit(context.query()));
     }
 
     @Override
-    public Node visitColumnReference(SqlBaseParser.ColumnReferenceContext context)
+    public Node visitDeReference(SqlBaseParser.DeReferenceContext context)
     {
-        return new QualifiedNameReference(getQualifiedName(context.qualifiedName()));
+        if (context.base == null) {
+            return new DeReferenceExpression(Optional.empty(), context.fieldName.getText());
+        }
+
+        Expression base = (Expression) visit(context.base);
+        if (base instanceof FunctionCall || base instanceof SubscriptExpression) {
+            return new FunctionCall(new QualifiedName(mangleFieldReference(context.fieldName.getText())), ImmutableList.of(base));
+        }
+
+        return new DeReferenceExpression(Optional.of(base), context.fieldName.getText());
     }
 
     @Override

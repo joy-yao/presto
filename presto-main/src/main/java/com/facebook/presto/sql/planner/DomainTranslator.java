@@ -27,6 +27,7 @@ import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.BetweenPredicate;
 import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
@@ -39,7 +40,6 @@ import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.math.DoubleMath;
@@ -91,14 +91,14 @@ public final class DomainTranslator
         ImmutableList.Builder<Expression> conjunctBuilder = ImmutableList.builder();
         for (Map.Entry<Symbol, Domain> entry : tupleDomain.getDomains().entrySet()) {
             Symbol symbol = entry.getKey();
-            QualifiedNameReference reference = new QualifiedNameReference(symbol.toQualifiedName());
+            DeReferenceExpression reference = new DeReferenceExpression(symbol.getName());
             Type type = symbolTypes.get(symbol);
             conjunctBuilder.add(toPredicate(entry.getValue(), reference, type));
         }
         return combineConjuncts(conjunctBuilder.build());
     }
 
-    private static Expression toPredicate(Domain domain, QualifiedNameReference reference, Type type)
+    private static Expression toPredicate(Domain domain, DeReferenceExpression reference, Type type)
     {
         if (domain.getRanges().isNone()) {
             return domain.isNullAllowed() ? new IsNullPredicate(reference) : FALSE_LITERAL;
@@ -317,7 +317,7 @@ public final class DomainTranslator
                 return super.visitComparisonExpression(node, complement);
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(((QualifiedNameReference) node.getLeft()).getName());
+            Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) node.getLeft());
             Type columnType = checkedTypeLookup(symbol);
             Object value = LiteralInterpreter.evaluate(metadata, session, node.getRight());
 
@@ -402,7 +402,7 @@ public final class DomainTranslator
         @Override
         protected ExtractionResult visitInPredicate(InPredicate node, Boolean complement)
         {
-            if (!(node.getValue() instanceof QualifiedNameReference) || !(node.getValueList() instanceof InListExpression)) {
+            if (!(node.getValue() instanceof DeReferenceExpression) || !(node.getValueList() instanceof InListExpression)) {
                 return super.visitInPredicate(node, complement);
             }
 
@@ -428,11 +428,11 @@ public final class DomainTranslator
         @Override
         protected ExtractionResult visitIsNullPredicate(IsNullPredicate node, Boolean complement)
         {
-            if (!(node.getValue() instanceof QualifiedNameReference)) {
+            if (!(node.getValue() instanceof DeReferenceExpression)) {
                 return super.visitIsNullPredicate(node, complement);
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(((QualifiedNameReference) node.getValue()).getName());
+            Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) node.getValue());
             Type columnType = checkedTypeLookup(symbol);
             Domain domain = complementIfNecessary(Domain.onlyNull(wrap(columnType.getJavaType())), complement);
             return new ExtractionResult(
@@ -443,11 +443,11 @@ public final class DomainTranslator
         @Override
         protected ExtractionResult visitIsNotNullPredicate(IsNotNullPredicate node, Boolean complement)
         {
-            if (!(node.getValue() instanceof QualifiedNameReference)) {
+            if (!(node.getValue() instanceof DeReferenceExpression)) {
                 return super.visitIsNotNullPredicate(node, complement);
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(((QualifiedNameReference) node.getValue()).getName());
+            Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) node.getValue());
             Type columnType = checkedTypeLookup(symbol);
 
             Domain domain = complementIfNecessary(Domain.notNull(wrap(columnType.getJavaType())), complement);
@@ -472,8 +472,8 @@ public final class DomainTranslator
 
     private static boolean isSimpleComparison(ComparisonExpression comparison)
     {
-        return (comparison.getLeft() instanceof QualifiedNameReference && comparison.getRight() instanceof Literal) ||
-                (comparison.getLeft() instanceof Literal && comparison.getRight() instanceof QualifiedNameReference);
+        return (comparison.getLeft() instanceof DeReferenceExpression && comparison.getRight() instanceof Literal) ||
+                (comparison.getLeft() instanceof Literal && comparison.getRight() instanceof DeReferenceExpression);
     }
 
     /**
@@ -481,10 +481,10 @@ public final class DomainTranslator
      */
     private static ComparisonExpression normalizeSimpleComparison(ComparisonExpression comparison)
     {
-        if (comparison.getLeft() instanceof QualifiedNameReference) {
+        if (comparison.getLeft() instanceof DeReferenceExpression) {
             return comparison;
         }
-        if (comparison.getRight() instanceof QualifiedNameReference) {
+        if (comparison.getRight() instanceof DeReferenceExpression) {
             return new ComparisonExpression(flipComparison(comparison.getType()), comparison.getRight(), comparison.getLeft());
         }
         throw new IllegalArgumentException("ComparisonExpression not a simple literal comparison: " + comparison);
@@ -494,10 +494,10 @@ public final class DomainTranslator
     {
         comparison = normalizeSimpleComparison(comparison);
 
-        checkArgument(comparison.getLeft() instanceof QualifiedNameReference, "Left must be a QualifiedNameReference");
+        checkArgument(comparison.getLeft() instanceof DeReferenceExpression, "Left must be a DeReferenceExpression");
         checkArgument(comparison.getRight() instanceof DoubleLiteral, "Right must be a DoubleLiteral");
 
-        QualifiedNameReference reference = (QualifiedNameReference) comparison.getLeft();
+        DeReferenceExpression reference = (DeReferenceExpression) comparison.getLeft();
         Double value = ((DoubleLiteral) comparison.getRight()).getValue();
 
         switch (comparison.getType()) {
@@ -565,10 +565,10 @@ public final class DomainTranslator
     private static boolean isSimpleMagicLiteralComparison(ComparisonExpression node)
     {
         FunctionCall call;
-        if ((node.getLeft() instanceof QualifiedNameReference) && (node.getRight() instanceof FunctionCall)) {
+        if ((node.getLeft() instanceof DeReferenceExpression) && (node.getRight() instanceof FunctionCall)) {
             call = (FunctionCall) node.getRight();
         }
-        else if ((node.getLeft() instanceof FunctionCall) && (node.getRight() instanceof QualifiedNameReference)) {
+        else if ((node.getLeft() instanceof FunctionCall) && (node.getRight() instanceof DeReferenceExpression)) {
             call = (FunctionCall) node.getLeft();
         }
         else {

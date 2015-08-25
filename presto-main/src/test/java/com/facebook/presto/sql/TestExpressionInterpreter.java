@@ -23,13 +23,13 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.planner.ExpressionInterpreter;
 import com.facebook.presto.sql.planner.Symbol;
 import com.facebook.presto.sql.planner.SymbolResolver;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.LikePredicate;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.StringLiteral;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -528,49 +528,49 @@ public class TestExpressionInterpreter
             throws Exception
     {
         assertOptimizedEquals("case " +
-                "when true then 33 " +
-                "end",
+                        "when true then 33 " +
+                        "end",
                 "33");
         assertOptimizedEquals("case " +
-                "when false then 1 " +
-                "else 33 " +
-                "end",
+                        "when false then 1 " +
+                        "else 33 " +
+                        "end",
                 "33");
 
         assertOptimizedEquals("case " +
-                "when bound_long = 1234 then 33 " +
-                "end",
+                        "when bound_long = 1234 then 33 " +
+                        "end",
                 "33");
         assertOptimizedEquals("case " +
-                "when true then bound_long " +
-                "end",
+                        "when true then bound_long " +
+                        "end",
                 "1234");
         assertOptimizedEquals("case " +
-                "when false then 1 " +
-                "else bound_long " +
-                "end",
+                        "when false then 1 " +
+                        "else bound_long " +
+                        "end",
                 "1234");
 
         assertOptimizedEquals("case " +
-                "when bound_long = 1234 then 33 " +
-                "else unbound_long " +
-                "end",
+                        "when bound_long = 1234 then 33 " +
+                        "else unbound_long " +
+                        "end",
                 "33");
         assertOptimizedEquals("case " +
-                "when true then bound_long " +
-                "else unbound_long " +
-                "end",
+                        "when true then bound_long " +
+                        "else unbound_long " +
+                        "end",
                 "1234");
         assertOptimizedEquals("case " +
-                "when false then unbound_long " +
-                "else bound_long " +
-                "end",
+                        "when false then unbound_long " +
+                        "else bound_long " +
+                        "end",
                 "1234");
 
         assertOptimizedEquals("case " +
-                "when unbound_long = 1234 then 33 " +
-                "else 1 " +
-                "end",
+                        "when unbound_long = 1234 then 33 " +
+                        "else 1 " +
+                        "end",
                 "" +
                         "case " +
                         "when unbound_long = 1234 then 33 " +
@@ -594,67 +594,67 @@ public class TestExpressionInterpreter
                 "33");
 
         assertOptimizedEquals("case null " +
-                "when true then 33 " +
-                "end",
+                        "when true then 33 " +
+                        "end",
                 "null");
         assertOptimizedEquals("case null " +
-                "when true then 33 " +
-                "else 33 " +
-                "end",
+                        "when true then 33 " +
+                        "else 33 " +
+                        "end",
                 "33");
         assertOptimizedEquals("case 33 " +
-                "when null then 1 " +
-                "else 33 " +
-                "end",
+                        "when null then 1 " +
+                        "else 33 " +
+                        "end",
                 "33");
 
         assertOptimizedEquals("case true " +
-                "when true then 33 " +
-                "end",
+                        "when true then 33 " +
+                        "end",
                 "33");
         assertOptimizedEquals("case true " +
-                "when false then 1 " +
-                "else 33 end",
+                        "when false then 1 " +
+                        "else 33 end",
                 "33");
 
         assertOptimizedEquals("case bound_long " +
-                "when 1234 then 33 " +
-                "end",
+                        "when 1234 then 33 " +
+                        "end",
                 "33");
         assertOptimizedEquals("case 1234 " +
-                "when bound_long then 33 " +
-                "end",
+                        "when bound_long then 33 " +
+                        "end",
                 "33");
         assertOptimizedEquals("case true " +
-                "when true then bound_long " +
-                "end",
+                        "when true then bound_long " +
+                        "end",
                 "1234");
         assertOptimizedEquals("case true " +
-                "when false then 1 " +
-                "else bound_long " +
-                "end",
+                        "when false then 1 " +
+                        "else bound_long " +
+                        "end",
                 "1234");
 
         assertOptimizedEquals("case bound_long " +
-                "when 1234 then 33 " +
-                "else unbound_long " +
-                "end",
+                        "when 1234 then 33 " +
+                        "else unbound_long " +
+                        "end",
                 "33");
         assertOptimizedEquals("case true " +
-                "when true then bound_long " +
-                "else unbound_long " +
-                "end",
+                        "when true then bound_long " +
+                        "else unbound_long " +
+                        "end",
                 "1234");
         assertOptimizedEquals("case true " +
-                "when false then unbound_long " +
-                "else bound_long " +
-                "end",
+                        "when false then unbound_long " +
+                        "else bound_long " +
+                        "end",
                 "1234");
 
         assertOptimizedEquals("case unbound_long " +
-                "when 1234 then 33 " +
-                "else 1 " +
-                "end",
+                        "when 1234 then 33 " +
+                        "else 1 " +
+                        "end",
                 "" +
                         "case unbound_long " +
                         "when 1234 then 33 " +
@@ -666,21 +666,21 @@ public class TestExpressionInterpreter
                         "when 33 then unbound_long " +
                         "else 1 " +
                         "end",
-                        "unbound_long");
+                "unbound_long");
         assertOptimizedEquals("case 33 " +
                         "when 0 then 0 " +
                         "when 33 then 1 " +
                         "when unbound_long then 2 " +
                         "else 1 " +
                         "end",
-                        "1");
+                "1");
         assertOptimizedEquals("case 33 " +
                         "when unbound_long then 0 " +
                         "when 1 then 1 " +
                         "when 33 then 2 " +
                         "else 0 " +
                         "end",
-                        "case 33 " +
+                "case 33 " +
                         "when unbound_long then 0 " +
                         "else 2 " +
                         "end");
@@ -689,14 +689,14 @@ public class TestExpressionInterpreter
                         "when 1 then 1 " +
                         "else unbound_long " +
                         "end",
-                        "unbound_long");
+                "unbound_long");
         assertOptimizedEquals("case 33 " +
                         "when unbound_long then 0 " +
                         "when 1 then 1 " +
                         "when unbound_long2 then 2 " +
                         "else 3 " +
                         "end",
-                        "case 33 " +
+                "case 33 " +
                         "when unbound_long then 0 " +
                         "when unbound_long2 then 2 " +
                         "else 3 " +
@@ -1033,7 +1033,7 @@ public class TestExpressionInterpreter
                         return Slices.wrappedBuffer("%el%".getBytes(UTF_8));
                 }
 
-                return new QualifiedNameReference(symbol.toQualifiedName());
+                return new DeReferenceExpression(symbol.getName());
             }
         });
     }

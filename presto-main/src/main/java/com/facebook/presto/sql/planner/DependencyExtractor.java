@@ -13,10 +13,10 @@
  */
 package com.facebook.presto.sql.planner;
 
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultExpressionTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
@@ -60,9 +60,9 @@ public final class DependencyExtractor
             extends DefaultExpressionTraversalVisitor<Void, ImmutableList.Builder<Symbol>>
     {
         @Override
-        protected Void visitQualifiedNameReference(QualifiedNameReference node, ImmutableList.Builder<Symbol> builder)
+        protected Void visitDeReference(DeReferenceExpression node, ImmutableList.Builder<Symbol> builder)
         {
-            builder.add(Symbol.fromQualifiedName(node.getName()));
+            builder.add(Symbol.fromDeReference(node));
             return null;
         }
     }
@@ -71,9 +71,9 @@ public final class DependencyExtractor
             extends DefaultExpressionTraversalVisitor<Void, ImmutableSet.Builder<QualifiedName>>
     {
         @Override
-        protected Void visitQualifiedNameReference(QualifiedNameReference node, ImmutableSet.Builder<QualifiedName> builder)
+        protected Void visitDeReference(DeReferenceExpression node, ImmutableSet.Builder<QualifiedName> builder)
         {
-            builder.add(node.getName());
+            builder.add(node.getLongestQualifiedName());
             return null;
         }
     }

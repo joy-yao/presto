@@ -37,6 +37,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
@@ -58,7 +59,6 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -71,6 +71,7 @@ import com.facebook.presto.sql.tree.TimestampLiteral;
 import com.facebook.presto.sql.tree.WhenClause;
 import com.facebook.presto.sql.tree.WindowFrame;
 import com.facebook.presto.type.RowType;
+import com.facebook.presto.type.RowType.RowField;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
@@ -112,7 +113,6 @@ import static com.facebook.presto.sql.tree.Extract.Field.TIMEZONE_HOUR;
 import static com.facebook.presto.sql.tree.Extract.Field.TIMEZONE_MINUTE;
 import static com.facebook.presto.type.ArrayParametricType.ARRAY;
 import static com.facebook.presto.type.JsonType.JSON;
-import static com.facebook.presto.type.RowType.RowField;
 import static com.facebook.presto.type.UnknownType.UNKNOWN;
 import static com.facebook.presto.util.DateTimeUtils.parseTimestampLiteral;
 import static com.facebook.presto.util.DateTimeUtils.timeHasTimeZone;
@@ -280,9 +280,9 @@ public class ExpressionAnalyzer
         }
 
         @Override
-        protected Type visitQualifiedNameReference(QualifiedNameReference node, AnalysisContext context)
+        protected Type visitDeReference(DeReferenceExpression node, AnalysisContext context)
         {
-            List<Field> matches = tupleDescriptor.resolveFields(node.getName());
+            List<Field> matches = tupleDescriptor.resolveFields(node.getLongestQualifiedName());
             if (matches.isEmpty()) {
                 // TODO This is kind of hacky, instead we should change the way QualifiedNameReferences are parsed
                 return tryVisitRowFieldAccessor(node);
@@ -293,18 +293,18 @@ public class ExpressionAnalyzer
 
             Field field = Iterables.getOnlyElement(matches);
             int fieldIndex = tupleDescriptor.indexOf(field);
-            resolvedNames.put(node.getName(), fieldIndex);
+            resolvedNames.put(node.getLongestQualifiedName(), fieldIndex);
             expressionTypes.put(node, field.getType());
 
             return field.getType();
         }
 
-        private Type tryVisitRowFieldAccessor(QualifiedNameReference node)
+        private Type tryVisitRowFieldAccessor(DeReferenceExpression node)
         {
-            if (node.getName().getParts().size() < 2) {
+            if (!node.getBase().isPresent()) {
                 throw createMissingAttributeException(node);
             }
-            QualifiedName base = new QualifiedName(node.getName().getParts().subList(0, node.getName().getParts().size() - 1));
+            QualifiedName base = ((DeReferenceExpression) (node.getBase().get())).getLongestQualifiedName();
             List<Field> matches = tupleDescriptor.resolveFields(base);
             if (matches.isEmpty()) {
                 throw createMissingAttributeException(node);
@@ -318,7 +318,7 @@ public class ExpressionAnalyzer
                 RowType rowType = checkType(field.getType(), RowType.class, "field.getType()");
                 Type rowFieldType = null;
                 for (RowField rowField : rowType.getFields()) {
-                    if (rowField.getName().equals(Optional.of(node.getName().getSuffix()))) {
+                    if (rowField.getName().equals(Optional.of(node.getFieldName()))) {
                         rowFieldType = rowField.getType();
                         break;
                     }
@@ -327,7 +327,7 @@ public class ExpressionAnalyzer
                     throw createMissingAttributeException(node);
                 }
                 int fieldIndex = tupleDescriptor.indexOf(field);
-                resolvedNames.put(node.getName(), fieldIndex);
+                resolvedNames.put(node.getLongestQualifiedName(), fieldIndex);
                 expressionTypes.put(node, rowFieldType);
                 rowFieldReferences.put(node, true);
 
@@ -336,9 +336,9 @@ public class ExpressionAnalyzer
             throw createMissingAttributeException(node);
         }
 
-        private SemanticException createMissingAttributeException(QualifiedNameReference node)
+        private SemanticException createMissingAttributeException(DeReferenceExpression node)
         {
-            return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node.getName());
+            return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node);
         }
 
         @Override
@@ -1070,6 +1070,7 @@ public class ExpressionAnalyzer
                 node -> new StatementAnalyzer(analysis, metadata, sqlParser, accessControl, session, experimentalSyntaxEnabled, Optional.empty()),
                 session);
     }
+
     public static ExpressionAnalyzer createConstantAnalyzer(Metadata metadata, Session session)
     {
         return createWithoutSubqueries(
