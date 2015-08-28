@@ -127,7 +127,7 @@ class TranslationMap
 
         // also update the field mappings if this expression is a simple field reference
         if (expression instanceof DeReferenceExpression) {
-            int fieldIndex = analysis.getResolvedNames(expression).get(((DeReferenceExpression) expression).getName());
+            int fieldIndex = analysis.getResolvedNames(expression).get(expression);
             fieldSymbols[fieldIndex] = symbol;
         }
     }
@@ -166,7 +166,7 @@ class TranslationMap
 
     private Expression translateNamesToSymbols(Expression expression)
     {
-        final Map<QualifiedName, Integer> resolvedNames = analysis.getResolvedNames(expression);
+        final Map<Expression, Integer> resolvedNames = analysis.getResolvedNames(expression);
         Preconditions.checkArgument(resolvedNames != null, "No resolved names for expression %s", expression);
 
         return ExpressionTreeRewriter.rewriteWith(new ExpressionRewriter<Void>()
@@ -188,13 +188,11 @@ class TranslationMap
             @Override
             public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
-                QualifiedName name = node.getName();
-
-                Integer fieldIndex = resolvedNames.get(name);
-                Preconditions.checkState(fieldIndex != null, "No field mapping for name '%s'", name);
+                Integer fieldIndex = resolvedNames.get(node);
+                Preconditions.checkState(fieldIndex != null, "No field mapping for node '%s'", node);
 
                 Symbol symbol = rewriteBase.getSymbol(fieldIndex);
-                Preconditions.checkState(symbol != null, "No symbol mapping for name '%s' (%s)", name, fieldIndex);
+                Preconditions.checkState(symbol != null, "No symbol mapping for node '%s' (%s)", node, fieldIndex);
 
                 Expression rewrittenExpression = new DeReferenceExpression(symbol.toQualifiedName());
 

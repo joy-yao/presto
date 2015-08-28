@@ -24,8 +24,6 @@ import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.InPredicate;
 import com.facebook.presto.sql.tree.Join;
 import com.facebook.presto.sql.tree.Node;
-import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Relation;
@@ -55,7 +53,7 @@ public class Analysis
 
     private TupleDescriptor outputDescriptor;
     private final IdentityHashMap<Node, TupleDescriptor> outputDescriptors = new IdentityHashMap<>();
-    private final IdentityHashMap<Expression, Map<QualifiedName, Integer>> resolvedNames = new IdentityHashMap<>();
+    private final IdentityHashMap<Expression, Map<Expression, Integer>> resolvedNames = new IdentityHashMap<>();
 
     private final IdentityHashMap<QuerySpecification, List<FunctionCall>> aggregates = new IdentityHashMap<>();
     private final IdentityHashMap<QuerySpecification, List<FieldOrExpression>> groupByExpressions = new IdentityHashMap<>();
@@ -111,12 +109,12 @@ public class Analysis
         this.updateType = updateType;
     }
 
-    public void addResolvedNames(Expression expression, Map<QualifiedName, Integer> mappings)
+    public void addResolvedNames(Expression expression, Map<Expression, Integer> mappings)
     {
         resolvedNames.put(expression, mappings);
     }
 
-    public Map<QualifiedName, Integer> getResolvedNames(Expression expression)
+    public Map<Expression, Integer> getResolvedNames(Expression expression)
     {
         return resolvedNames.get(expression);
     }
@@ -136,9 +134,9 @@ public class Analysis
         return new IdentityHashMap<>(types);
     }
 
-    public boolean isRowFieldReference(DeReferenceExpression deReferenceExpression)
+    public boolean isRowFieldReference(Expression expression)
     {
-        return rowFieldReferences.containsKey(deReferenceExpression);
+        return rowFieldReferences.containsKey(expression);
     }
 
     public Type getType(Expression expression)

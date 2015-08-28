@@ -129,7 +129,7 @@ public class ExpressionAnalyzer
     private final FunctionRegistry functionRegistry;
     private final TypeManager typeManager;
     private final Function<Node, StatementAnalyzer> statementAnalyzerFactory;
-    private final Map<QualifiedName, Integer> resolvedNames = new HashMap<>();
+    private final Map<Expression, Integer> resolvedNames = new HashMap<>();
     private final IdentityHashMap<FunctionCall, FunctionInfo> resolvedFunctions = new IdentityHashMap<>();
     private final IdentityHashMap<Expression, Type> expressionTypes = new IdentityHashMap<>();
     private final IdentityHashMap<Expression, Type> expressionCoercions = new IdentityHashMap<>();
@@ -145,7 +145,7 @@ public class ExpressionAnalyzer
         this.session = requireNonNull(session, "session is null");
     }
 
-    public Map<QualifiedName, Integer> getResolvedNames()
+    public Map<Expression, Integer> getResolvedNames()
     {
         return resolvedNames;
     }
@@ -293,7 +293,7 @@ public class ExpressionAnalyzer
 
             Field field = Iterables.getOnlyElement(matches);
             int fieldIndex = tupleDescriptor.indexOf(field);
-            resolvedNames.put(node.getName(), fieldIndex);
+            resolvedNames.put(node, fieldIndex);
             expressionTypes.put(node, field.getType());
 
             return field.getType();
@@ -327,7 +327,7 @@ public class ExpressionAnalyzer
                     throw createMissingAttributeException(node);
                 }
                 int fieldIndex = tupleDescriptor.indexOf(field);
-                resolvedNames.put(node.getName(), fieldIndex);
+                resolvedNames.put(node, fieldIndex);
                 expressionTypes.put(node, rowFieldType);
                 rowFieldReferences.put(node, true);
 
