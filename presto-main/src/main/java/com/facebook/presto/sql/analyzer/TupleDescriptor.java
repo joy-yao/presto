@@ -145,6 +145,16 @@ public class TupleDescriptor
                 .collect(toImmutableList());
     }
 
+//    /**
+//     * Gets the index of all columns matching the specified name
+//     */
+//    public List<Field> resolveFields(Expression name)
+//    {
+//        return allFields.stream()
+//                .filter(input -> input.canResolve(name))
+//                .collect(toImmutableList());
+//    }
+
     public Predicate<QualifiedName> canResolvePredicate()
     {
         return input -> !resolveFields(input).isEmpty();

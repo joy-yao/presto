@@ -471,7 +471,7 @@ public final class FunctionAssertions
         projectionExpression.accept(new DefaultTraversalVisitor<Void, Void>()
         {
             @Override
-            protected Void visitDeReference(DeReferenceExpression node, Void context)
+            protected Void visitDeReferenceExpression(DeReferenceExpression node, Void context)
             {
                 hasDeReference.set(true);
                 return null;

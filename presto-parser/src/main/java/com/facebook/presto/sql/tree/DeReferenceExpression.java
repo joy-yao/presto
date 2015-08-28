@@ -21,10 +21,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class DeReferenceExpression
         extends Expression
 {
-    private final Optional<Expression> base; // base can be DeReference or QualifiedNameReference or subscript
+    private final Optional<Expression> base; // base can be DeReference or FunctionCall or SubscriptExpression
     private final String fieldName;
 
-    private QualifiedName longestQulifiedName;
+    private QualifiedName longestQualifiedName;
     private boolean isQualifiedName;
 
     public DeReferenceExpression(String fieldName)
@@ -42,7 +42,7 @@ public class DeReferenceExpression
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
-        return visitor.visitDeReference(this, context);
+        return visitor.visitDeReferenceExpression(this, context);
     }
 
     public Optional<Expression> getBase()
@@ -61,13 +61,12 @@ public class DeReferenceExpression
             return fieldName;
         }
 
-        Expression baseExpression = base.get();
-        return baseExpression.toString() + "." + fieldName;
+        return base.get().toString() + "." + fieldName;
     }
 
     public boolean isQualifiedName()
     {
-        if (longestQulifiedName == null) {
+        if (longestQualifiedName == null) {
             calculateLongestQualifiedName();
         }
         return isQualifiedName;
@@ -75,16 +74,16 @@ public class DeReferenceExpression
 
     public QualifiedName getLongestQualifiedName()
     {
-        if (longestQulifiedName == null) {
+        if (longestQualifiedName == null) {
             calculateLongestQualifiedName();
         }
-        return longestQulifiedName;
+        return longestQualifiedName;
     }
 
     private void calculateLongestQualifiedName()
     {
         if (!base.isPresent()) {
-            longestQulifiedName = new QualifiedName(fieldName);
+            longestQualifiedName = new QualifiedName(fieldName);
             isQualifiedName = true;
             return;
         }
@@ -95,11 +94,10 @@ public class DeReferenceExpression
 
             if (base.isQualifiedName()) {
                 isQualifiedName = true;
-                longestQulifiedName = QualifiedName.of(base.getLongestQualifiedName(), fieldName);
+                longestQualifiedName = QualifiedName.of(base.getLongestQualifiedName(), fieldName);
             }
             else {
-                isQualifiedName = false;
-                longestQulifiedName = base.getLongestQualifiedName();
+                longestQualifiedName = base.getLongestQualifiedName();
             }
             return;
         }

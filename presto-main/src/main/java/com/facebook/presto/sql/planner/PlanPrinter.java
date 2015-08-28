@@ -469,7 +469,9 @@ public class PlanPrinter
         {
             print(indent, "- Project => [%s]", formatOutputs(node.getOutputSymbols()));
             for (Map.Entry<Symbol, Expression> entry : node.getAssignments().entrySet()) {
-                if (entry.getValue() instanceof DeReferenceExpression && ((DeReferenceExpression) entry.getValue()).getLongestQualifiedName().equals(entry.getKey().toQualifiedName())) {
+                if (entry.getValue() instanceof DeReferenceExpression
+                        && !((DeReferenceExpression) entry.getValue()).getBase().isPresent()
+                        && ((DeReferenceExpression) entry.getValue()).getFieldName().equals(entry.getKey().toQualifiedName())) {
                     // skip identity assignments
                     continue;
                 }

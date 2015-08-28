@@ -23,6 +23,7 @@ import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.SubscriptExpression;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
@@ -195,8 +196,24 @@ class TranslationMap
                 Preconditions.checkState(symbol != null, "No symbol mapping for name '%s' (%s)", node, fieldIndex);
 
                 Expression rewrittenExpression = new DeReferenceExpression(symbol.getName());
-
                 if (analysis.isRowFieldReference(node)) {
+                    // Any Row field reference DeReference has a base.
+                    Expression baseExpression = node.getBase().get();
+                    if (analysis.isRowFieldReference(baseExpression)) {
+                        if (baseExpression instanceof DeReferenceExpression) {
+                            rewrittenExpression = rewriteDeReference((DeReferenceExpression) baseExpression, context, treeRewriter);
+                        }
+                        else if (baseExpression instanceof SubscriptExpression) {
+                            rewrittenExpression = rewriteSubscriptExpression((SubscriptExpression) baseExpression, context, treeRewriter);
+                        }
+                        else if (baseExpression instanceof FunctionCall) {
+                            rewrittenExpression = rewriteFunctionCall((FunctionCall) baseExpression, context, treeRewriter);
+                        }
+                        else {
+                            throw new RuntimeException("FXIME");
+                        }
+                    }
+
                     QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getFieldName()));
                     rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenExpression));
                 }

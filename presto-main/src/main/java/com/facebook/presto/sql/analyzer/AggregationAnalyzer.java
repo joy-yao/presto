@@ -332,7 +332,7 @@ public class AggregationAnalyzer
         }
 
         @Override
-        protected Boolean visitDeReference(DeReferenceExpression node, Void context)
+        protected Boolean visitDeReferenceExpression(DeReferenceExpression node, Void context)
         {
             QualifiedName name = node.getLongestQualifiedName();
 

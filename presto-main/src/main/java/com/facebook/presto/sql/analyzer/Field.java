@@ -120,6 +120,34 @@ public class Field
         return matchesPrefix(name.getPrefix()) && this.name.get().equalsIgnoreCase(name.getSuffix());
     }
 
+//    +    public boolean canResolve(Expression expression)
+//    +    {
+//    +        if (!this.name.isPresent()) {
+//        +            return false;
+//        +        }
+//    +
+//            +        if (expression instanceof DeReference) {
+//        +            // TODO: need to know whether the qualified name and the name of this field were quoted
+//                +            DeReference deReference = (DeReference) expression;
+//        +            if (relationAlias.isPresent()) {
+//            +                String deReferenceNameBaseString = deReference.getName();
+//            +                String deReferenceFieldString = deReference.getFieldName();
+//            +                deReferenceNameBaseString = deReferenceNameBaseString.substring(0, deReferenceNameBaseString.length() - deReferenceFieldString.length() - 1);
+//            +                return relationAlias.get().toString().endsWith(deReferenceNameBaseString) && this.name.get().equalsIgnoreCase(deReferenceFieldString);
+//            +            }
+//        +        }
+//    +        else if (expression instanceof QualifiedNameReference) {
+//        +            QualifiedNameReference qualifiedNameReference = (QualifiedNameReference) expression;
+//        +            return canResolve(qualifiedNameReference.getName());
+//        +        }
+//    +        else // FIXME: add to handle subscript.
+//    +        {
+//            +
+//                    +        }
+//            +        return false;
+//    +    }
+//    +
+
     @Override
     public String toString()
     {

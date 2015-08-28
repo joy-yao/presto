@@ -160,10 +160,56 @@ public abstract class AbstractTestQueries
     public void testRowFieldAccessor()
             throws Exception
     {
+        //DeReference only
         assertQuery("SELECT a.col0 FROM (VALUES ROW (test_row(1, 2))) AS t (a)", "SELECT 1");
         assertQuery("SELECT a.col0 FROM (VALUES ROW (test_row(1.0, 2.0))) AS t (a)", "SELECT 1.0");
         assertQuery("SELECT a.col0 FROM (VALUES ROW (test_row(TRUE, FALSE))) AS t (a)", "SELECT TRUE");
         assertQuery("SELECT a.col1 FROM (VALUES ROW (test_row(1.0, 'kittens'))) AS t (a)", "SELECT 'kittens'");
+
+        assertQuery("SELECT a.col2.col1 FROM (VALUES ROW(test_row(1.0, ARRAY[2], test_row(3, 4.0)))) t(a)", "SELECT 4.0");
+
+//        // Subscript + Dereference
+        assertQuery("SELECT a.col1[2] FROM (VALUES ROW(test_row(1.0, ARRAY[22, 33, 44, 55], test_row(3, 4.0)))) t(a)", "SELECT 33");
+        assertQuery("SELECT a.col1[2].col0, a.col1[2].col1 FROM (VALUES ROW(test_row(1.0, ARRAY[test_row(31, 4.1), test_row(32, 4.2)], test_row(3, 4.0)))) t(a)", "SELECT 32, 4.2");
+    }
+
+    @Test
+    public void testRowFieldAccessorInAggregate()
+            throws Exception
+    {
+        assertQuery("SELECT a.col0, SUM(a.col1) FROM (VALUES (ROW(test_row(1, 11))), (ROW(test_row(1, 12)))  ) t(a) GROUP BY a.col0", "SELECT 1, 23");
+
+        assertQuery("SELECT a.col0, SUM(a.col1[2]), SUM(a.col2.col0), SUM(a.col2.col1) FROM " +
+                        "(VALUES " +
+                        "(ROW(test_row(1.0, ARRAY[2, 13, 4], test_row(11, 4.1)))), " +
+                        "(ROW(test_row(2.0, ARRAY[2, 23, 4], test_row(12, 14.0)))), " +
+                        "(ROW(test_row(1.0, ARRAY[22, 33, 44], test_row(13, 5.0))))) t(a) " +
+                        "GROUP BY a.col0",
+                "SELECT * FROM VALUES (1.0, 46, 24, 9.1), (2.0, 23, 12, 14.0)");
+
+        assertQuery("SELECT a.col2.col0, SUM(a.col0), SUM(a.col1[2]), SUM(a.col2.col1) FROM " +
+                        "(VALUES " +
+                        "(ROW(test_row(1.0, ARRAY[2, 13, 4], test_row(11, 4.1)))), " +
+                        "(ROW(test_row(2.0, ARRAY[2, 23, 4], test_row(11, 14.0)))), " +
+                        "(ROW(test_row(7.0, ARRAY[22, 33, 44], test_row(13, 5.0)))) ) t(a) " +
+                        "GROUP BY a.col2.col0",
+                "SELECT * FROM VALUES (11, 3.0, 36, 18.1), (13, 7.0, 33, 5.0)");
+
+        assertQuery("SELECT a.col1[2], SUM(a.col0), SUM(a.col1[1]), SUM(a.col2.col1) FROM " +
+                        "(VALUES " +
+                        "(ROW(test_row(1.0, ARRAY[2, 13, 4], test_row(11, 4.1)))), " +
+                        "(ROW(test_row(2.0, ARRAY[2, 13, 4], test_row(12, 14.0)))), " +
+                        "(ROW(test_row(7.0, ARRAY[22, 33, 44], test_row(13, 5.0)))) ) t(a) " +
+                        "GROUP BY a.col1[2]",
+                "SELECT * FROM VALUES (13, 3.0, 4, 18.1), (33, 7.0, 22, 5.0)");
+
+        assertQuery("SELECT a.col1[1].col0, SUM(a.col0), SUM(a.col1[1].col1), SUM(a.col1[2].col0), SUM(a.col2.col1) FROM " +
+                        "(VALUES " +
+                        "(ROW(test_row(1.0, ARRAY[test_row(31, 4.5), test_row(12, 4.2)], test_row(3, 4.0)))), " +
+                        "(ROW(test_row(3.1, ARRAY[test_row(41, 3.1), test_row(32, 4.2)], test_row(6, 6.0)))), " +
+                        "(ROW(test_row(2.2, ARRAY[test_row(31, 4.2), test_row(22, 4.2)], test_row(5, 4.0)))) ) t(a) " +
+                        "GROUP BY a.col1[1].col0",
+                "SELECT * FROM VALUES (31, 3.2, 8.7, 34, 8.0), (41, 3.1, 3.1, 32, 6.0)");
     }
 
     @Test
@@ -263,8 +309,8 @@ public abstract class AbstractTestQueries
         assertQuery("SELECT 1.1 in (VALUES (1.1), (2.2))", "VALUES (TRUE)");
 
         assertQuery("" +
-                "WITH a AS (VALUES (1.1, 2), (sin(3.3), 2+2)) " +
-                "SELECT * FROM a",
+                        "WITH a AS (VALUES (1.1, 2), (sin(3.3), 2+2)) " +
+                        "SELECT * FROM a",
                 "VALUES (1.1, 2), (sin(3.3), 2+2)");
 
         // implicity coersions
@@ -371,6 +417,18 @@ public abstract class AbstractTestQueries
                 .build();
 
         assertEquals(actual, expected);
+    }
+
+    @Test
+    public void testWhereWithRowField()
+            throws Exception
+    {
+        assertQuery("SELECT a.col0 FROM (VALUES ROW (test_row(1, 2))) AS t (a) WHERE a.col0 > 0", "SELECT 1");
+        assertQuery("SELECT SUM(a.col0) FROM (VALUES ROW (test_row(1, 2))) AS t (a) WHERE a.col0 <= 0", "SELECT null");
+
+        assertQuery("SELECT a.col0 FROM (VALUES ROW (test_row(1, 2))) AS t (a) WHERE a.col0 < a.col1", "SELECT 1");
+        assertQuery("SELECT SUM(a.col0) FROM (VALUES ROW (test_row(1, 2))) AS t (a) WHERE a.col0 < a.col1", "SELECT 1");
+        assertQuery("SELECT SUM(a.col0) FROM (VALUES ROW (test_row(1, 2))) AS t (a) WHERE a.col0 > a.col1", "SELECT null");
     }
 
     @Test
@@ -583,10 +641,10 @@ public abstract class AbstractTestQueries
     {
         MaterializedResult actual = computeActual(
                 "SELECT RANK() OVER (PARTITION BY orderdate ORDER BY COUNT(DISTINCT clerk)) rnk " +
-                "FROM orders " +
-                "GROUP BY orderdate, custkey " +
-                "ORDER BY rnk " +
-                "LIMIT 1");
+                        "FROM orders " +
+                        "GROUP BY orderdate, custkey " +
+                        "ORDER BY rnk " +
+                        "LIMIT 1");
         MaterializedResult expected = resultBuilder(getSession(), BIGINT).row(1).build();
         assertEquals(actual, expected);
     }
@@ -1140,6 +1198,7 @@ public abstract class AbstractTestQueries
     {
         assertQuery("SELECT custkey, sum(t) FROM (SELECT custkey, count(*) t FROM orders GROUP BY custkey) GROUP BY custkey");
     }
+
     @Test
     public void testGroupByWithNulls()
             throws Exception
@@ -1430,18 +1489,18 @@ public abstract class AbstractTestQueries
                 "SELECT * FROM (VALUES (1, 1), (2, NULL), (NULL, 3))");
         assertQuery("SELECT COUNT(*) FROM lineitem FULL JOIN orders ON lineitem.orderkey = orders.orderkey",
                 "SELECT COUNT(*) FROM (" +
-                    "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem LEFT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
-                    "UNION ALL " +
-                    "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem RIGHT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
-                    "WHERE lineitem.orderkey IS NULL" +
-                ")");
+                        "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem LEFT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
+                        "UNION ALL " +
+                        "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem RIGHT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
+                        "WHERE lineitem.orderkey IS NULL" +
+                        ")");
         assertQuery("SELECT COUNT(*) FROM lineitem FULL OUTER JOIN orders ON lineitem.orderkey = orders.orderkey",
                 "SELECT COUNT(*) FROM (" +
-                    "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem LEFT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
-                    "UNION ALL " +
-                    "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem RIGHT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
-                    "WHERE lineitem.orderkey IS NULL" +
-                ")");
+                        "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem LEFT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
+                        "UNION ALL " +
+                        "SELECT lineitem.orderkey, orders.orderkey AS o2 FROM lineitem RIGHT OUTER JOIN orders ON lineitem.orderkey = orders.orderkey " +
+                        "WHERE lineitem.orderkey IS NULL" +
+                        ")");
 
         // The above outer join queries will produce the same result even if they are inner join.
         // The below query uses "orderkey = custkey" as join condition.
@@ -2454,7 +2513,8 @@ public abstract class AbstractTestQueries
     }
 
     @Test
-    public void testRowNumberUnpartitionedFilterLimit() throws Exception
+    public void testRowNumberUnpartitionedFilterLimit()
+            throws Exception
     {
         assertQuery("" +
                 "SELECT row_number() OVER ()\n" +
@@ -2976,8 +3036,8 @@ public abstract class AbstractTestQueries
             throws Exception
     {
         assertQuery("" +
-                "WITH a AS (SELECT * FROM orders) " +
-                "SELECT * FROM a",
+                        "WITH a AS (SELECT * FROM orders) " +
+                        "SELECT * FROM a",
                 "SELECT * FROM orders");
     }
 
@@ -2986,8 +3046,8 @@ public abstract class AbstractTestQueries
             throws Exception
     {
         assertQuery("" +
-                "WITH a AS (SELECT 123 FROM orders LIMIT 1)" +
-                "SELECT a.* FROM a",
+                        "WITH a AS (SELECT 123 FROM orders LIMIT 1)" +
+                        "SELECT a.* FROM a",
                 "SELECT 123 FROM orders LIMIT 1");
     }
 
@@ -2996,8 +3056,8 @@ public abstract class AbstractTestQueries
             throws Exception
     {
         assertQuery("" +
-                "WITH a AS (SELECT * FROM orders) " +
-                "SELECT * FROM a x",
+                        "WITH a AS (SELECT * FROM orders) " +
+                        "SELECT * FROM a x",
                 "SELECT * FROM orders");
     }
 
@@ -3018,10 +3078,10 @@ public abstract class AbstractTestQueries
             throws Exception
     {
         assertQuery("" +
-                "WITH a AS (SELECT orderkey n FROM orders)\n" +
-                ", b AS (SELECT n + 1 n FROM a)\n" +
-                ", c AS (SELECT n + 1 n FROM b)\n" +
-                "SELECT n + 1 FROM c",
+                        "WITH a AS (SELECT orderkey n FROM orders)\n" +
+                        ", b AS (SELECT n + 1 n FROM a)\n" +
+                        ", c AS (SELECT n + 1 n FROM b)\n" +
+                        "SELECT n + 1 FROM c",
                 "SELECT orderkey + 3 FROM orders");
     }
 
@@ -3076,12 +3136,12 @@ public abstract class AbstractTestQueries
             throws Exception
     {
         assertQuery("" +
-                "WITH a AS (SELECT custkey FROM orders), " +
-                "     b AS (" +
-                "         WITH a AS (SELECT orderkey FROM orders)" +
-                "         SELECT * FROM a" + // should refer to inner 'a'
-                "    )" +
-                "SELECT * FROM b",
+                        "WITH a AS (SELECT custkey FROM orders), " +
+                        "     b AS (" +
+                        "         WITH a AS (SELECT orderkey FROM orders)" +
+                        "         SELECT * FROM a" + // should refer to inner 'a'
+                        "    )" +
+                        "SELECT * FROM b",
                 "SELECT orderkey FROM orders"
         );
     }
@@ -4509,7 +4569,7 @@ public abstract class AbstractTestQueries
         MaterializedResult actual = computeActual("SELECT cardinality(approx_set(null)) FROM orders");
 
         MaterializedResult expected = resultBuilder(getSession(), actual.getTypes())
-                .row(new Object[] { null })
+                .row(new Object[] {null})
                 .build();
 
         assertEquals(actual.getMaterializedRows(), expected.getMaterializedRows());
@@ -4620,7 +4680,7 @@ public abstract class AbstractTestQueries
         MaterializedResult actual = computeActual("SELECT cardinality(merge(null)) FROM orders");
 
         MaterializedResult expected = resultBuilder(getSession(), BIGINT)
-                .row(new Object[] { null })
+                .row(new Object[] {null})
                 .build();
 
         assertEquals(actual.getMaterializedRows(), expected.getMaterializedRows());

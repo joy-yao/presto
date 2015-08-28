@@ -64,7 +64,9 @@ public class PruneRedundantProjections
             for (Map.Entry<Symbol, Expression> entry : node.getAssignments().entrySet()) {
                 Expression expression = entry.getValue();
                 Symbol symbol = entry.getKey();
-                if (!(expression instanceof DeReferenceExpression && ((DeReferenceExpression) expression).getLongestQualifiedName().equals(symbol.toQualifiedName()))) {
+                if (!(expression instanceof DeReferenceExpression
+                        && !((DeReferenceExpression) expression).getBase().isPresent()
+                        && ((DeReferenceExpression) expression).getFieldName().equals(symbol.toQualifiedName()))) {
                     canElide = false;
                     break;
                 }

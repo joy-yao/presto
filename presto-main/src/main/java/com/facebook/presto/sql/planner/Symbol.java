@@ -51,7 +51,7 @@ public class Symbol
 
     public static Symbol fromDeReference(DeReferenceExpression expression)
     {
-        Preconditions.checkArgument(!expression.getBase().isPresent(), "Can't create a symbol from a DeReferenceExpression with prefix");
+        Preconditions.checkArgument(!expression.getBase().isPresent(), "Can't create a symbol from a DeReferenceExpression %s", expression);
         return new Symbol(expression.getFieldName());
     }
 

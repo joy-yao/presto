@@ -240,7 +240,7 @@ public class TreePrinter
             }
 
             @Override
-            protected Void visitDeReference(DeReferenceExpression node, Integer indentLevel)
+            protected Void visitDeReferenceExpression(DeReferenceExpression node, Integer indentLevel)
             {
                 QualifiedName resolved = resolvedNameReferences.get(node);
                 String resolvedName = "";
