@@ -44,7 +44,7 @@ public class Symbol
         return QualifiedName.of(name);
     }
 
-    public DeReferenceExpression toQualifiedNameReference()
+    public DeReferenceExpression toDeReferenceExpression()
     {
         return new DeReferenceExpression(toQualifiedName());
     }

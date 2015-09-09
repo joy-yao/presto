@@ -159,7 +159,7 @@ public class PredicatePushDown
                 for (int index = 0; index < node.getInputs().get(i).size(); index++) {
                     outputsToInputs.put(
                             node.getOutputSymbols().get(index),
-                            node.getInputs().get(i).get(index).toQualifiedNameReference());
+                            node.getInputs().get(i).get(index).toDeReferenceExpression());
                 }
 
                 Expression sourcePredicate = ExpressionTreeRewriter.rewriteWith(new ExpressionSymbolInliner(outputsToInputs), context.get());
@@ -329,12 +329,12 @@ public class PredicatePushDown
 
                     leftProjections.putAll(node.getLeft()
                             .getOutputSymbols().stream()
-                            .collect(Collectors.toMap(key -> key, Symbol::toQualifiedNameReference)));
+                            .collect(Collectors.toMap(key -> key, Symbol::toDeReferenceExpression)));
 
                     ImmutableMap.Builder<Symbol, Expression> rightProjections = ImmutableMap.builder();
                     rightProjections.putAll(node.getRight()
                             .getOutputSymbols().stream()
-                            .collect(Collectors.toMap(key -> key, Symbol::toQualifiedNameReference)));
+                            .collect(Collectors.toMap(key -> key, Symbol::toDeReferenceExpression)));
 
                     // HACK! we don't support cross joins right now, so put in a simple fake join predicate instead if all of the join clauses got simplified out
                     // TODO: remove this code when cross join support is added

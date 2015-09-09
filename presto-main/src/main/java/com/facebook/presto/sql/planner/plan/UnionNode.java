@@ -104,7 +104,7 @@ public class UnionNode
     {
         ImmutableMap.Builder<Symbol, DeReferenceExpression> builder = ImmutableMap.<Symbol, DeReferenceExpression>builder();
         for (Map.Entry<Symbol, Collection<Symbol>> entry : symbolMapping.asMap().entrySet()) {
-            builder.put(entry.getKey(), Iterables.get(entry.getValue(), sourceIndex).toQualifiedNameReference());
+            builder.put(entry.getKey(), Iterables.get(entry.getValue(), sourceIndex).toDeReferenceExpression());
         }
 
         return builder.build();
@@ -119,7 +119,7 @@ public class UnionNode
         return Multimaps.transformValues(FluentIterable.from(getOutputSymbols())
                 .toMap(outputToSourceSymbolFunction(sourceIndex))
                 .asMultimap()
-                .inverse(), Symbol::toQualifiedNameReference);
+                .inverse(), Symbol::toDeReferenceExpression);
     }
 
     private Function<Symbol, Symbol> outputToSourceSymbolFunction(final int sourceIndex)

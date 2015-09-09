@@ -770,7 +770,7 @@ public class LocalExecutionPlanner
             List<Symbol> outputSymbols = node.getOutputSymbols();
 
             List<Expression> projectionExpressions = outputSymbols.stream()
-                    .map(Symbol::toQualifiedNameReference)
+                    .map(Symbol::toDeReferenceExpression)
                     .collect(toImmutableList());
 
             return visitScanFilterAndProject(context, sourceNode, filterExpression, projectionExpressions, outputSymbols);

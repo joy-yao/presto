@@ -128,7 +128,7 @@ public class EffectivePredicateExtractor
             for (int i = 0; i < node.getInputs().get(source).size(); i++) {
                 mappings.put(
                         node.getOutputSymbols().get(i),
-                        node.getInputs().get(source).get(i).toQualifiedNameReference());
+                        node.getInputs().get(source).get(i).toDeReferenceExpression());
             }
             return mappings.entrySet();
         });
