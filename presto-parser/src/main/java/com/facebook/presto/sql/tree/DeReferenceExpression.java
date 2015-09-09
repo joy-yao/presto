@@ -36,7 +36,7 @@ public class DeReferenceExpression
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
-        return visitor.visitQualifiedNameReference(this, context);
+        return visitor.visitDeReferenceExpression(this, context);
     }
 
     @Override

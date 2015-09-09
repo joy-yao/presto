@@ -222,7 +222,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        protected String visitQualifiedNameReference(DeReferenceExpression node, Boolean unmangleNames)
+        protected String visitDeReferenceExpression(DeReferenceExpression node, Boolean unmangleNames)
         {
             return formatQualifiedName(node.getName());
         }

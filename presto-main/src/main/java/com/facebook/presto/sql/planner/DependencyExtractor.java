@@ -60,7 +60,7 @@ public final class DependencyExtractor
             extends DefaultExpressionTraversalVisitor<Void, ImmutableList.Builder<Symbol>>
     {
         @Override
-        protected Void visitQualifiedNameReference(DeReferenceExpression node, ImmutableList.Builder<Symbol> builder)
+        protected Void visitDeReferenceExpression(DeReferenceExpression node, ImmutableList.Builder<Symbol> builder)
         {
             builder.add(Symbol.fromQualifiedName(node.getName()));
             return null;
@@ -71,7 +71,7 @@ public final class DependencyExtractor
             extends DefaultExpressionTraversalVisitor<Void, ImmutableSet.Builder<QualifiedName>>
     {
         @Override
-        protected Void visitQualifiedNameReference(DeReferenceExpression node, ImmutableSet.Builder<QualifiedName> builder)
+        protected Void visitDeReferenceExpression(DeReferenceExpression node, ImmutableSet.Builder<QualifiedName> builder)
         {
             builder.add(node.getName());
             return null;

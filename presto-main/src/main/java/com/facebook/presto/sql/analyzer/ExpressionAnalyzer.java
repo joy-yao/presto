@@ -280,7 +280,7 @@ public class ExpressionAnalyzer
         }
 
         @Override
-        protected Type visitQualifiedNameReference(DeReferenceExpression node, AnalysisContext context)
+        protected Type visitDeReferenceExpression(DeReferenceExpression node, AnalysisContext context)
         {
             List<Field> matches = tupleDescriptor.resolveFields(node.getName());
             if (matches.isEmpty()) {
