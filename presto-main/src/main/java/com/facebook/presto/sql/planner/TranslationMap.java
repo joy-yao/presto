@@ -186,7 +186,7 @@ class TranslationMap
             }
 
             @Override
-            public Expression rewriteQualifiedNameReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+            public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
                 QualifiedName name = node.getName();
 

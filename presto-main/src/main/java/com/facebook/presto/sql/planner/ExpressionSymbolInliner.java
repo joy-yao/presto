@@ -31,7 +31,7 @@ public class ExpressionSymbolInliner
     }
 
     @Override
-    public Expression rewriteQualifiedNameReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+    public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
     {
         return mappings.get(Symbol.fromQualifiedName(node.getName()));
     }

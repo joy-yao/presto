@@ -37,7 +37,7 @@ public class SymbolToInputRewriter
     }
 
     @Override
-    public Expression rewriteQualifiedNameReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+    public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
     {
         Integer channel = symbolToChannelMapping.get(Symbol.fromQualifiedName(node.getName()));
         Preconditions.checkArgument(channel != null, "Cannot resolve symbol %s", node.getName());

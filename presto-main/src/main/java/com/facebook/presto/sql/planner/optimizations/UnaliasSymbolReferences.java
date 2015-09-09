@@ -491,7 +491,7 @@ public class UnaliasSymbolReferences
             return ExpressionTreeRewriter.rewriteWith(new ExpressionRewriter<Void>()
             {
                 @Override
-                public Expression rewriteQualifiedNameReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+                public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
                 {
                     Symbol canonical = canonicalize(Symbol.fromQualifiedName(node.getName()));
                     return new DeReferenceExpression(canonical.toQualifiedName());

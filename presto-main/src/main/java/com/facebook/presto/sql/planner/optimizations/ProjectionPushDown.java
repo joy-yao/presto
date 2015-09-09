@@ -116,7 +116,7 @@ public class ProjectionPushDown
         return ExpressionTreeRewriter.rewriteWith(new ExpressionRewriter<Void>()
         {
             @Override
-            public Expression rewriteQualifiedNameReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+            public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
                 DeReferenceExpression deReferenceExpression = symbolMapping.get(Symbol.fromQualifiedName(node.getName()));
                 checkState(deReferenceExpression != null, "Cannot resolve symbol %s", node.getName());

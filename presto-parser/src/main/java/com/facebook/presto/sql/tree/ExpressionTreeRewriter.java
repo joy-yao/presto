@@ -603,7 +603,7 @@ public final class ExpressionTreeRewriter<C>
         public Expression visitDeReferenceExpression(DeReferenceExpression node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {
-                Expression result = rewriter.rewriteQualifiedNameReference(node, context.get(), ExpressionTreeRewriter.this);
+                Expression result = rewriter.rewriteDeReferenceExpression(node, context.get(), ExpressionTreeRewriter.this);
                 if (result != null) {
                     return result;
                 }
