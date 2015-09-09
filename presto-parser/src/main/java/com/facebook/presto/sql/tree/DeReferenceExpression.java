@@ -13,30 +13,106 @@
  */
 package com.facebook.presto.sql.tree;
 
+import java.util.Objects;
+import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class DeReferenceExpression
         extends Expression
 {
-    private final QualifiedName name;
+    private final Optional<Expression> base; // base can be DeReference or FunctionCall or SubscriptExpression
+    private final String fieldName;
 
-    public DeReferenceExpression(QualifiedName name)
+    private QualifiedName longestQualifiedName;
+    private boolean isQualifiedName;
+    private boolean longestQualifiedNameCalculated;
+
+    public DeReferenceExpression(String fieldName)
     {
-        this.name = name;
+        this(Optional.empty(), fieldName);
     }
 
-    public QualifiedName getName()
+    public DeReferenceExpression(Optional<Expression> base, String fieldName)
     {
-        return name;
-    }
-
-    public QualifiedName getSuffix()
-    {
-        return QualifiedName.of(name.getSuffix());
+        this.base = base;
+        checkArgument(fieldName != null, "fieldName is null");
+        this.fieldName = fieldName.toLowerCase();
     }
 
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
         return visitor.visitDeReferenceExpression(this, context);
+    }
+
+    public Optional<Expression> getBase()
+    {
+        return base;
+    }
+
+    public String getFieldName()
+    {
+        return fieldName;
+    }
+
+    public String getName()
+    {
+        if (!base.isPresent()) {
+            return fieldName;
+        }
+
+        return base.get().toString() + "." + fieldName;
+    }
+
+    public boolean isQualifiedName()
+    {
+        if (!longestQualifiedNameCalculated) {
+            calculateLongestQualifiedName();
+        }
+        return isQualifiedName;
+    }
+
+    public QualifiedName getLongestQualifiedName()
+    {
+        if (!longestQualifiedNameCalculated) {
+            calculateLongestQualifiedName();
+        }
+        return longestQualifiedName;
+    }
+
+    private void calculateLongestQualifiedName()
+    {
+        if (!base.isPresent()) {
+            longestQualifiedName = new QualifiedName(fieldName);
+            isQualifiedName = true;
+        }
+        else {
+            Expression baseExpression = base.get();
+            if (baseExpression instanceof DeReferenceExpression) {
+                DeReferenceExpression base = (DeReferenceExpression) baseExpression;
+
+                if (base.isQualifiedName()) {
+                    isQualifiedName = true;
+                    longestQualifiedName = QualifiedName.of(base.getLongestQualifiedName(), fieldName);
+                }
+                else {
+                    longestQualifiedName = base.getLongestQualifiedName();
+                }
+            }
+            else if (baseExpression instanceof FunctionCall) {
+                FunctionCall base = (FunctionCall) baseExpression;
+                longestQualifiedName = base.getName();
+            }
+            else if (baseExpression instanceof SubscriptExpression) {
+                SubscriptExpression base = (SubscriptExpression) baseExpression;
+                if (base.getBase() instanceof DeReferenceExpression) {
+                    DeReferenceExpression deReferenceBase = (DeReferenceExpression) base.getBase();
+                    longestQualifiedName = deReferenceBase.getLongestQualifiedName();
+                }
+            }
+        }
+        longestQualifiedNameCalculated = true;
     }
 
     @Override
@@ -48,19 +124,14 @@ public class DeReferenceExpression
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
         DeReferenceExpression that = (DeReferenceExpression) o;
-
-        if (!name.equals(that.name)) {
-            return false;
-        }
-
-        return true;
+        return Objects.equals(base, that.base) &&
+                Objects.equals(fieldName, that.fieldName);
     }
 
     @Override
     public int hashCode()
     {
-        return name.hashCode();
+        return Objects.hash(base, fieldName);
     }
 }

@@ -13,10 +13,10 @@
  */
 package com.facebook.presto.sql.planner;
 
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultExpressionTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
@@ -62,7 +62,10 @@ public final class DependencyExtractor
         @Override
         protected Void visitDeReferenceExpression(DeReferenceExpression node, ImmutableList.Builder<Symbol> builder)
         {
-            builder.add(Symbol.fromQualifiedName(node.getName()));
+//            builder.add(Symbol.fromDeReference(node));
+            if (!node.getBase().isPresent()) {
+                builder.add(Symbol.fromDeReference(node));
+            }
             return null;
         }
     }
@@ -73,7 +76,8 @@ public final class DependencyExtractor
         @Override
         protected Void visitDeReferenceExpression(DeReferenceExpression node, ImmutableSet.Builder<QualifiedName> builder)
         {
-            builder.add(node.getName());
+//            checkState(node.isQualifiedName(), "DeReference node is not a qualified name");
+            builder.add(node.getLongestQualifiedName());
             return null;
         }
     }

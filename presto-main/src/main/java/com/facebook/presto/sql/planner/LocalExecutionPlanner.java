@@ -548,7 +548,7 @@ public class LocalExecutionPlanner
             for (Map.Entry<Symbol, FunctionCall> entry : node.getWindowFunctions().entrySet()) {
                 ImmutableList.Builder<Integer> arguments = ImmutableList.builder();
                 for (Expression argument : entry.getValue().getArguments()) {
-                    Symbol argumentSymbol = Symbol.fromQualifiedName(((DeReferenceExpression) argument).getName());
+                    Symbol argumentSymbol = Symbol.fromDeReference((DeReferenceExpression) argument);
                     arguments.add(source.getLayout().get(argumentSymbol));
                 }
                 Symbol symbol = entry.getKey();
@@ -916,7 +916,7 @@ public class LocalExecutionPlanner
                 ProjectionFunction function;
                 if (expression instanceof DeReferenceExpression) {
                     // fast path when we know it's a direct symbol reference
-                    Symbol reference = Symbol.fromQualifiedName(((DeReferenceExpression) expression).getName());
+                    Symbol reference = Symbol.fromDeReference((DeReferenceExpression) expression);
                     function = ProjectionFunctions.singleColumn(context.getTypes().get(reference), sourceLayout.get(reference));
                 }
                 else {
@@ -1598,7 +1598,7 @@ public class LocalExecutionPlanner
         {
             List<Integer> arguments = new ArrayList<>();
             for (Expression argument : call.getArguments()) {
-                Symbol argumentSymbol = Symbol.fromQualifiedName(((DeReferenceExpression) argument).getName());
+                Symbol argumentSymbol = Symbol.fromDeReference((DeReferenceExpression) argument);
                 arguments.add(source.getLayout().get(argumentSymbol));
             }
 

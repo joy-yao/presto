@@ -361,7 +361,7 @@ public class TestEqualityInference
 
     private static DeReferenceExpression nameReference(String symbol)
     {
-        return new DeReferenceExpression(new Symbol(symbol).toQualifiedName());
+        return new DeReferenceExpression(symbol);
     }
 
     private static LongLiteral number(long number)

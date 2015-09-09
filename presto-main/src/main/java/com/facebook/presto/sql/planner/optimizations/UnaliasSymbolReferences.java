@@ -330,7 +330,7 @@ public class UnaliasSymbolReferences
 
                 if (entry.getValue() instanceof DeReferenceExpression) {
                     // Always map a trivial symbol projection
-                    Symbol symbol = Symbol.fromQualifiedName(((DeReferenceExpression) entry.getValue()).getName());
+                    Symbol symbol = Symbol.fromDeReference(((DeReferenceExpression) entry.getValue()));
                     if (!symbol.equals(entry.getKey())) {
                         map(entry.getKey(), symbol);
                     }
@@ -493,8 +493,8 @@ public class UnaliasSymbolReferences
                 @Override
                 public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
                 {
-                    Symbol canonical = canonicalize(Symbol.fromQualifiedName(node.getName()));
-                    return new DeReferenceExpression(canonical.toQualifiedName());
+                    Symbol canonical = canonicalize(Symbol.fromDeReference(node));
+                    return new DeReferenceExpression(canonical.getName());
                 }
             }, value);
         }

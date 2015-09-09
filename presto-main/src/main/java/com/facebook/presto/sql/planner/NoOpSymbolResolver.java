@@ -23,6 +23,6 @@ public class NoOpSymbolResolver
     @Override
     public Object getValue(Symbol symbol)
     {
-        return new DeReferenceExpression(symbol.toQualifiedName());
+        return new DeReferenceExpression(symbol.getName());
     }
 }

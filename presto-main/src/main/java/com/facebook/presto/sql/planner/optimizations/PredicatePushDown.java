@@ -604,8 +604,8 @@ public class PredicatePushDown
         private static Expression equalsExpression(Symbol symbol1, Symbol symbol2)
         {
             return new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                    new DeReferenceExpression(symbol1.toQualifiedName()),
-                    new DeReferenceExpression(symbol2.toQualifiedName()));
+                    new DeReferenceExpression(symbol1.getName()),
+                    new DeReferenceExpression(symbol2.getName()));
         }
 
         private Type extractType(Expression expression)
@@ -677,7 +677,7 @@ public class PredicatePushDown
         {
             IdentityHashMap<Expression, Type> expressionTypes = getExpressionTypes(session, metadata, sqlParser, symbolAllocator.getTypes(), expression);
             return ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes)
-                    .optimize(symbol -> nullSymbols.contains(symbol) ? null : new DeReferenceExpression(symbol.toQualifiedName()));
+                    .optimize(symbol -> nullSymbols.contains(symbol) ? null : new DeReferenceExpression(symbol.getName()));
         }
 
         private static Predicate<Expression> joinEqualityExpression(final Collection<Symbol> leftSymbols)

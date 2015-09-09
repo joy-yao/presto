@@ -274,7 +274,7 @@ class QueryPlanner
 
         if (subPlan.getSampleWeight().isPresent()) {
             Symbol symbol = subPlan.getSampleWeight().get();
-            projections.put(symbol, new DeReferenceExpression(symbol.toQualifiedName()));
+            projections.put(symbol, new DeReferenceExpression(symbol.getName()));
         }
 
         return new PlanBuilder(outputTranslations, new ProjectNode(idAllocator.getNextId(), subPlan.getRoot(), projections.build()), subPlan.getSampleWeight());
@@ -331,7 +331,7 @@ class QueryPlanner
         projections.putAll(coerce(uncoerced, subPlan, translations));
 
         for (Symbol symbol : alreadyCoerced) {
-            projections.put(symbol, new DeReferenceExpression(symbol.toQualifiedName()));
+            projections.put(symbol, new DeReferenceExpression(symbol.getName()));
         }
 
         return new PlanBuilder(translations, new ProjectNode(idAllocator.getNextId(), subPlan.getRoot(), projections.build()), subPlan.getSampleWeight());
@@ -581,7 +581,7 @@ class QueryPlanner
 
         // add an identity projection for underlying plan
         for (Symbol symbol : subPlan.getRoot().getOutputSymbols()) {
-            Expression expression = new DeReferenceExpression(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.getName());
             projections.put(symbol, expression);
         }
 

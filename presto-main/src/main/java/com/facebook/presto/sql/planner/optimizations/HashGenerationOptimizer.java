@@ -292,7 +292,7 @@ public class HashGenerationOptimizer
         checkArgument(!partitioningSymbols.isEmpty(), "partitioningSymbols is empty");
         ImmutableMap.Builder<Symbol, Expression> outputSymbols = ImmutableMap.builder();
         for (Symbol symbol : source.getOutputSymbols()) {
-            Expression expression = new DeReferenceExpression(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.getName());
             outputSymbols.put(symbol, expression);
         }
 
@@ -312,7 +312,7 @@ public class HashGenerationOptimizer
 
     private static Expression getHashFunctionCall(Expression previousHashValue, Symbol symbol)
     {
-        FunctionCall functionCall = new FunctionCall(QualifiedName.of(HASH_CODE), Optional.<Window>empty(), false, ImmutableList.<Expression>of(new DeReferenceExpression(symbol.toQualifiedName())));
+        FunctionCall functionCall = new FunctionCall(QualifiedName.of(HASH_CODE), Optional.<Window>empty(), false, ImmutableList.<Expression>of(new DeReferenceExpression(symbol.getName())));
         List<Expression> arguments = ImmutableList.of(previousHashValue, orNullHashCode(functionCall));
         return new FunctionCall(QualifiedName.of("combine_hash"), arguments);
     }

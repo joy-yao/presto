@@ -104,7 +104,7 @@ public class AggregationAnalyzer
         // and the '*' will be expanded to Field references. Therefore we translate all simple name expressions
         // in the group by clause to fields they reference so that the expansion from '*' can be matched against them
         for (Expression expression : Iterables.filter(expressions, instanceOf(DeReferenceExpression.class))) {
-            QualifiedName name = ((DeReferenceExpression) expression).getName();
+            QualifiedName name = ((DeReferenceExpression) expression).getLongestQualifiedName();
 
             List<Field> fields = tupleDescriptor.resolveFields(name);
             Preconditions.checkState(fields.size() <= 1, "Found more than one field for name '%s': %s", name, fields);
@@ -334,7 +334,7 @@ public class AggregationAnalyzer
         @Override
         protected Boolean visitDeReferenceExpression(DeReferenceExpression node, Void context)
         {
-            QualifiedName name = node.getName();
+            QualifiedName name = node.getLongestQualifiedName();
 
             List<Field> fields = tupleDescriptor.resolveFields(name);
             Preconditions.checkState(!fields.isEmpty(), "No fields for name '%s'", name);

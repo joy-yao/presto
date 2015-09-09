@@ -192,7 +192,7 @@ public class IndexJoinOptimizer
     private static Symbol referenceToSymbol(Expression expression)
     {
         checkArgument(expression instanceof DeReferenceExpression);
-        return Symbol.fromQualifiedName(((DeReferenceExpression) expression).getName());
+        return Symbol.fromDeReference((DeReferenceExpression) expression);
     }
 
     /**

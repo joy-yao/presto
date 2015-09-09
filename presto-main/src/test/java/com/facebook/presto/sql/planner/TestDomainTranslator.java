@@ -943,7 +943,7 @@ public class TestDomainTranslator
 
     private static DeReferenceExpression reference(Symbol symbol)
     {
-        return new DeReferenceExpression(symbol.toQualifiedName());
+        return new DeReferenceExpression(symbol.getName());
     }
 
     private static NotExpression not(Expression expression)

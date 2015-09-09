@@ -76,11 +76,11 @@ public class EffectivePredicateExtractor
     }
 
     private static final Predicate<Map.Entry<Symbol, ? extends Expression>> SYMBOL_MATCHES_EXPRESSION =
-            entry -> entry.getValue().equals(new DeReferenceExpression(entry.getKey().toQualifiedName()));
+            entry -> entry.getValue().equals(new DeReferenceExpression(entry.getKey().getName()));
 
     private static final Function<Map.Entry<Symbol, ? extends Expression>, Expression> ENTRY_TO_EQUALITY =
             entry -> {
-                DeReferenceExpression reference = new DeReferenceExpression(entry.getKey().toQualifiedName());
+                DeReferenceExpression reference = new DeReferenceExpression(entry.getKey().getName());
                 Expression expression = entry.getValue();
                 // TODO: switch this to 'IS NOT DISTINCT FROM' syntax when EqualityInference properly supports it
                 return new ComparisonExpression(ComparisonExpression.Type.EQUAL, reference, expression);
@@ -225,8 +225,8 @@ public class EffectivePredicateExtractor
         List<Expression> joinConjuncts = new ArrayList<>();
         for (JoinNode.EquiJoinClause clause : node.getCriteria()) {
             joinConjuncts.add(new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                    new DeReferenceExpression(clause.getLeft().toQualifiedName()),
-                    new DeReferenceExpression(clause.getRight().toQualifiedName())));
+                    new DeReferenceExpression(clause.getLeft().getName()),
+                    new DeReferenceExpression(clause.getRight().getName())));
         }
 
         switch (node.getType()) {

@@ -335,8 +335,12 @@ public final class GraphvizPrinter
         {
             StringBuilder builder = new StringBuilder();
             for (Map.Entry<Symbol, Expression> entry : node.getAssignments().entrySet()) {
-                if ((entry.getValue() instanceof DeReferenceExpression) &&
-                        ((DeReferenceExpression) entry.getValue()).getName().equals(entry.getKey().toQualifiedName())) {
+//                if ((entry.getValue() instanceof DeReferenceExpression)
+//                        && !((DeReferenceExpression) entry.getValue()).getBase().isPresent()
+//                        && ((DeReferenceExpression) entry.getValue()).getFieldName().equals(entry.getKey().toQualifiedName())) {
+                if ((entry.getValue() instanceof DeReferenceExpression)
+                        && !((DeReferenceExpression) entry.getValue()).getBase().isPresent()
+                        && ((DeReferenceExpression) entry.getValue()).getFieldName().equals(entry.getKey().getName())) {
                     // skip identity assignments
                     continue;
                 }
@@ -409,8 +413,8 @@ public final class GraphvizPrinter
             List<Expression> joinExpressions = new ArrayList<>();
             for (JoinNode.EquiJoinClause clause : node.getCriteria()) {
                 joinExpressions.add(new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                        new DeReferenceExpression(clause.getLeft().toQualifiedName()),
-                        new DeReferenceExpression(clause.getRight().toQualifiedName())));
+                        new DeReferenceExpression(clause.getLeft().getName()),
+                        new DeReferenceExpression(clause.getRight().getName())));
             }
 
             String criteria = Joiner.on(" AND ").join(joinExpressions);
@@ -446,8 +450,8 @@ public final class GraphvizPrinter
             List<Expression> joinExpressions = new ArrayList<>();
             for (IndexJoinNode.EquiJoinClause clause : node.getCriteria()) {
                 joinExpressions.add(new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                        new DeReferenceExpression(clause.getProbe().toQualifiedName()),
-                        new DeReferenceExpression(clause.getIndex().toQualifiedName())));
+                        new DeReferenceExpression(clause.getProbe().getName()),
+                        new DeReferenceExpression(clause.getIndex().getName())));
             }
 
             String criteria = Joiner.on(" AND ").join(joinExpressions);

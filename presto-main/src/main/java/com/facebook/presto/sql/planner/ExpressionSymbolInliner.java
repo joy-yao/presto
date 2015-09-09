@@ -33,6 +33,6 @@ public class ExpressionSymbolInliner
     @Override
     public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
     {
-        return mappings.get(Symbol.fromQualifiedName(node.getName()));
+        return mappings.get(Symbol.fromDeReference(node));
     }
 }

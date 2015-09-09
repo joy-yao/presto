@@ -52,8 +52,8 @@ import com.facebook.presto.sql.planner.plan.TopNNode;
 import com.facebook.presto.sql.planner.plan.TopNRowNumberNode;
 import com.facebook.presto.sql.planner.plan.UnnestNode;
 import com.facebook.presto.sql.planner.plan.WindowNode;
-import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.Expression;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -387,7 +387,7 @@ class PropertyDerivations
                 Object value = optimizer.optimize(NoOpSymbolResolver.INSTANCE);
 
                 if (value instanceof DeReferenceExpression) {
-                    Symbol symbol = Symbol.fromQualifiedName(((DeReferenceExpression) value).getName());
+                    Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) value);
                     value = constants.getOrDefault(symbol, value);
                 }
 
@@ -490,7 +490,7 @@ class PropertyDerivations
             Map<Symbol, Symbol> inputToOutput = new HashMap<>();
             for (Map.Entry<Symbol, Expression> assignment : assignments.entrySet()) {
                 if (assignment.getValue() instanceof DeReferenceExpression) {
-                    inputToOutput.put(Symbol.fromQualifiedName(((DeReferenceExpression) assignment.getValue()).getName()), assignment.getKey());
+                    inputToOutput.put(Symbol.fromDeReference((DeReferenceExpression) assignment.getValue()), assignment.getKey());
                 }
             }
             return inputToOutput;

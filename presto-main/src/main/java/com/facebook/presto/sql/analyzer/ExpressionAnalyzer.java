@@ -14,13 +14,13 @@
 package com.facebook.presto.sql.analyzer;
 
 import com.facebook.presto.Session;
-import com.facebook.presto.security.AccessControl;
-import com.facebook.presto.security.DenyAllAccessControl;
 import com.facebook.presto.metadata.FunctionInfo;
 import com.facebook.presto.metadata.FunctionRegistry;
 import com.facebook.presto.metadata.Metadata;
 import com.facebook.presto.metadata.OperatorNotFoundException;
 import com.facebook.presto.metadata.OperatorType;
+import com.facebook.presto.security.AccessControl;
+import com.facebook.presto.security.DenyAllAccessControl;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
 import com.facebook.presto.spi.type.TypeSignature;
@@ -37,6 +37,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.Expression;
@@ -57,8 +58,6 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
-import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -282,63 +281,71 @@ public class ExpressionAnalyzer
         @Override
         protected Type visitDeReferenceExpression(DeReferenceExpression node, AnalysisContext context)
         {
-            List<Field> matches = tupleDescriptor.resolveFields(node.getName());
-            if (matches.isEmpty()) {
-                // TODO This is kind of hacky, instead we should change the way QualifiedNameReferences are parsed
-                return tryVisitRowFieldAccessor(node);
-            }
-            if (matches.size() > 1) {
-                throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
-            }
-
-            Field field = Iterables.getOnlyElement(matches);
-            int fieldIndex = tupleDescriptor.indexOf(field);
-            resolvedNames.put(node, fieldIndex);
-            expressionTypes.put(node, field.getType());
-
-            return field.getType();
-        }
-
-        private Type tryVisitRowFieldAccessor(DeReferenceExpression node)
-        {
-            if (node.getName().getParts().size() < 2) {
-                throw createMissingAttributeException(node);
-            }
-            QualifiedName base = new QualifiedName(node.getName().getParts().subList(0, node.getName().getParts().size() - 1));
-            List<Field> matches = tupleDescriptor.resolveFields(base);
-            if (matches.isEmpty()) {
-                throw createMissingAttributeException(node);
-            }
-            if (matches.size() > 1) {
-                throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
-            }
-
-            Field field = Iterables.getOnlyElement(matches);
-            if (field.getType() instanceof RowType) {
-                RowType rowType = checkType(field.getType(), RowType.class, "field.getType()");
-                Type rowFieldType = null;
-                for (RowField rowField : rowType.getFields()) {
-                    if (rowField.getName().equals(Optional.of(node.getName().getSuffix()))) {
-                        rowFieldType = rowField.getType();
-                        break;
-                    }
+            if (node.isQualifiedName()) {
+                List<Field> matches = tupleDescriptor.resolveFields(node.getLongestQualifiedName());
+                if (matches.size() > 1) {
+                    throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
                 }
-                if (rowFieldType == null) {
+
+                if (matches.size() == 1) {
+                    Field field = Iterables.getOnlyElement(matches);
+                    int fieldIndex = tupleDescriptor.indexOf(field);
+                    resolvedNames.put(node, fieldIndex);
+                    expressionTypes.put(node, field.getType());
+
+                    return field.getType();
+                }
+                // No match
+                if (!node.getBase().isPresent()) {
                     throw createMissingAttributeException(node);
                 }
-                int fieldIndex = tupleDescriptor.indexOf(field);
-                resolvedNames.put(node, fieldIndex);
-                expressionTypes.put(node, rowFieldType);
-                rowFieldReferences.put(node, true);
-
-                return rowFieldType;
             }
-            throw createMissingAttributeException(node);
+
+            // If node is not qualifiedName, it must has a base.
+            Expression base = node.getBase().get();
+            Type baseType;
+
+            // We have a ancestor that is not a DeReference.
+            if (base instanceof DeReferenceExpression) {
+                baseType = visitDeReferenceExpression((DeReferenceExpression) base, context);
+            }
+            else if (base instanceof FunctionCall) {
+                baseType = visitFunctionCall((FunctionCall) base, context);
+            }
+            else if (base instanceof SubscriptExpression) {
+                baseType = visitSubscriptExpression((SubscriptExpression) base, context);
+            }
+            else {
+                throw new RuntimeException(String.format("Unsupported base expression %s for DeReferenceExpression ", base));
+            }
+
+            RowType rowType = checkType(baseType, RowType.class, "field.getType()");
+
+            Type rowFieldType = null;
+            for (RowField rowField : rowType.getFields()) {
+                if (rowField.getName().equals(Optional.of(node.getFieldName()))) {
+                    rowFieldType = rowField.getType();
+                    break;
+                }
+            }
+            if (rowFieldType == null) {
+                throw createMissingAttributeException(node);
+            }
+
+            // If the base is FunctionCall or SubscriptExpression, it won't be in resolvedNames.
+            if (resolvedNames.containsKey(base)) {
+                int fieldIndex = resolvedNames.get(base);
+                resolvedNames.put(node, fieldIndex);
+            }
+            expressionTypes.put(node, rowFieldType);
+            rowFieldReferences.put(node, true);
+
+            return rowFieldType;
         }
 
         private SemanticException createMissingAttributeException(DeReferenceExpression node)
         {
-            return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node.getName());
+            return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node);
         }
 
         @Override
@@ -1070,6 +1077,7 @@ public class ExpressionAnalyzer
                 node -> new StatementAnalyzer(analysis, metadata, sqlParser, accessControl, session, experimentalSyntaxEnabled, Optional.empty()),
                 session);
     }
+
     public static ExpressionAnalyzer createConstantAnalyzer(Metadata metadata, Session session)
     {
         return createWithoutSubqueries(

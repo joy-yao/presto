@@ -1033,7 +1033,7 @@ public class TestExpressionInterpreter
                         return Slices.wrappedBuffer("%el%".getBytes(UTF_8));
                 }
 
-                return new DeReferenceExpression(symbol.toQualifiedName());
+                return new DeReferenceExpression(symbol.getName());
             }
         });
     }

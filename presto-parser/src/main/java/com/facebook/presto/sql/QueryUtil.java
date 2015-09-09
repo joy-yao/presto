@@ -53,7 +53,7 @@ public final class QueryUtil
 
     public static Expression nameReference(String name)
     {
-        return new DeReferenceExpression(QualifiedName.of(name));
+        return new DeReferenceExpression(name);
     }
 
     public static SelectItem unaliasedName(String name)

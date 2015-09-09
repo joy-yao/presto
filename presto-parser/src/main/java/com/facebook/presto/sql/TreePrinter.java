@@ -247,7 +247,7 @@ public class TreePrinter
                 if (resolved != null) {
                     resolvedName = "=>" + resolved.toString();
                 }
-                print(indentLevel, "QualifiedName[" + node.getName() + resolvedName + "]");
+                print(indentLevel, "DeReferenceExpression[" + node.getName() + resolvedName + "]");
                 return null;
             }
 

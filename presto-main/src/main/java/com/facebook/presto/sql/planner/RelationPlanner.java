@@ -317,7 +317,7 @@ class RelationPlanner
             ImmutableMap.Builder<Symbol, Expression> projections = ImmutableMap.builder();
             projections.put(sampleWeight.get(), expression);
             for (Symbol symbol : root.getOutputSymbols()) {
-                projections.put(symbol, new DeReferenceExpression(symbol.toQualifiedName()));
+                projections.put(symbol, new DeReferenceExpression(symbol.getName()));
             }
             root = new ProjectNode(idAllocator.getNextId(), root, projections.build());
         }
@@ -368,7 +368,7 @@ class RelationPlanner
     private static Expression oneIfNull(Optional<Symbol> symbol)
     {
         if (symbol.isPresent()) {
-            return new CoalesceExpression(new DeReferenceExpression(symbol.get().toQualifiedName()), new LongLiteral("1"));
+            return new CoalesceExpression(new DeReferenceExpression(symbol.get().getName()), new LongLiteral("1"));
         }
         else {
             return new LongLiteral("1");
@@ -501,15 +501,15 @@ class RelationPlanner
             Type inputType = symbolAllocator.getTypes().get(inputSymbol);
             Type outputType = coerceToTypes[i];
             if (outputType != inputType) {
-                Cast cast = new Cast(new DeReferenceExpression(inputSymbol.toQualifiedName()), outputType.getTypeSignature().toString());
+                Cast cast = new Cast(new DeReferenceExpression(inputSymbol.getName()), outputType.getTypeSignature().toString());
                 Symbol outputSymbol = symbolAllocator.newSymbol(cast, outputType);
                 assignments.put(outputSymbol, cast);
                 newSymbols.add(outputSymbol);
             }
             else {
-                DeReferenceExpression qualifiedNameReference = new DeReferenceExpression(inputSymbol.toQualifiedName());
-                Symbol outputSymbol = symbolAllocator.newSymbol(qualifiedNameReference, outputType);
-                assignments.put(outputSymbol, qualifiedNameReference);
+                DeReferenceExpression deReferenceExpression = new DeReferenceExpression(inputSymbol.getName());
+                Symbol outputSymbol = symbolAllocator.newSymbol(deReferenceExpression, outputType);
+                assignments.put(outputSymbol, deReferenceExpression);
                 newSymbols.add(outputSymbol);
             }
             Field oldField = oldDescriptor.getFieldByIndex(i);
@@ -586,7 +586,7 @@ class RelationPlanner
     {
         ImmutableMap.Builder<Symbol, Expression> projections = ImmutableMap.builder();
         for (Symbol symbol : subPlan.getOutputSymbols()) {
-            Expression expression = new DeReferenceExpression(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.getName());
             projections.put(symbol, expression);
         }
         Expression one = new LongLiteral("1");
@@ -619,7 +619,7 @@ class RelationPlanner
 
         // add an identity projection for underlying plan
         for (Symbol symbol : subPlan.getRoot().getOutputSymbols()) {
-            Expression expression = new DeReferenceExpression(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.getName());
             projections.put(symbol, expression);
         }
 

@@ -116,7 +116,7 @@ public class SingleDistinctOptimizer
 
                 ImmutableMap.Builder<Symbol, Expression> outputSymbols = ImmutableMap.builder();
                 for (Symbol symbol : aggregationNode.getOutputSymbols()) {
-                    Expression expression = new DeReferenceExpression(symbol.toQualifiedName());
+                    Expression expression = new DeReferenceExpression(symbol.getName());
                     outputSymbols.put(symbol, expression);
                 }
 

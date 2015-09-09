@@ -85,7 +85,7 @@ public class SymbolAllocator
     {
         String nameHint = "expr";
         if (expression instanceof DeReferenceExpression) {
-            nameHint = ((DeReferenceExpression) expression).getName().getSuffix();
+            nameHint = ((DeReferenceExpression) expression).getFieldName();
         }
         else if (expression instanceof FunctionCall) {
             nameHint = ((FunctionCall) expression).getName().getSuffix();

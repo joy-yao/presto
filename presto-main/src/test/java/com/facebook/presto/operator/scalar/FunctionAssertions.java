@@ -53,11 +53,13 @@ import com.facebook.presto.sql.planner.plan.PlanNodeId;
 import com.facebook.presto.sql.relational.RowExpression;
 import com.facebook.presto.sql.relational.SqlToRowExpressionTranslator;
 import com.facebook.presto.sql.tree.Cast;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.FunctionCall;
+import com.facebook.presto.sql.tree.QualifiedName;
 import com.facebook.presto.testing.LocalQueryRunner;
 import com.facebook.presto.testing.MaterializedResult;
 import com.google.common.collect.ImmutableList;
@@ -87,6 +89,7 @@ import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
+import static com.facebook.presto.sql.QueryUtil.mangleFieldReference;
 import static com.facebook.presto.sql.analyzer.ExpressionAnalyzer.analyzeExpressionsWithSymbols;
 import static com.facebook.presto.sql.analyzer.ExpressionAnalyzer.getExpressionTypesFromInput;
 import static com.facebook.presto.sql.planner.LocalExecutionPlanner.toTypes;
@@ -408,6 +411,33 @@ public final class FunctionAssertions
 
                 return rewrittenExpression;
             }
+
+            @Override
+            public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+            {
+                if (node.isQualifiedName()) {
+                    return rewriteExpression(node, context, treeRewriter);
+                }
+
+                Expression base = node.getBase().get();
+                Expression rewrittenBase;
+                if (base instanceof DeReferenceExpression) {
+                    rewrittenBase = rewriteDeReferenceExpression((DeReferenceExpression) base, context, treeRewriter);
+                }
+                else {
+                    rewrittenBase = rewriteExpression(base, context, treeRewriter);
+                }
+
+                QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getFieldName()));
+                Expression rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenBase));
+                // cast expression if coercion is registered
+                Type coercion = analysis.getCoercion(node);
+                if (coercion != null) {
+                    rewrittenExpression = new Cast(rewrittenExpression, coercion.getTypeSignature().toString());
+                }
+
+                return rewrittenExpression;
+            }
         }, parsedExpression);
 
         return canonicalizeExpression(rewrittenExpression);
@@ -467,17 +497,17 @@ public final class FunctionAssertions
 
     private static boolean needsBoundValue(Expression projectionExpression)
     {
-        final AtomicBoolean hasQualifiedNameReference = new AtomicBoolean();
+        final AtomicBoolean hasDeReferenceExpression = new AtomicBoolean();
         projectionExpression.accept(new DefaultTraversalVisitor<Void, Void>()
         {
             @Override
             protected Void visitDeReferenceExpression(DeReferenceExpression node, Void context)
             {
-                hasQualifiedNameReference.set(true);
+                hasDeReferenceExpression.set(true);
                 return null;
             }
         }, null);
-        return hasQualifiedNameReference.get();
+        return hasDeReferenceExpression.get();
     }
 
     private Operator interpretedFilterProject(Expression filter, Expression projection, Session session)

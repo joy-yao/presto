@@ -17,12 +17,12 @@ import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.analyzer.Analysis;
 import com.facebook.presto.sql.analyzer.FieldOrExpression;
 import com.facebook.presto.sql.tree.Cast;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.facebook.presto.sql.QueryUtil.mangleFieldReference;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Keeps track of fields and expressions and their mapping to symbols in the current plan
@@ -95,7 +96,7 @@ class TranslationMap
                 Expression rewrittenExpression;
                 Symbol symbol = expressionMappings.get(node);
                 if (symbol != null) {
-                    rewrittenExpression = new DeReferenceExpression(symbol.toQualifiedName());
+                    rewrittenExpression = new DeReferenceExpression(symbol.getName());
                 }
                 else {
                     rewrittenExpression = treeRewriter.defaultRewrite(node, context);
@@ -111,9 +112,9 @@ class TranslationMap
         if (fieldOrExpression.isFieldReference()) {
             int fieldIndex = fieldOrExpression.getFieldIndex();
             Symbol symbol = fieldSymbols[fieldIndex];
-            Preconditions.checkState(symbol != null, "No mapping for field '%s'", fieldIndex);
+            checkState(symbol != null, "No mapping for field '%s'", fieldIndex);
 
-            return new DeReferenceExpression(symbol.toQualifiedName());
+            return new DeReferenceExpression(symbol.getName());
         }
         else {
             return rewrite(fieldOrExpression.getExpression());
@@ -126,7 +127,7 @@ class TranslationMap
         expressionMappings.put(translated, symbol);
 
         // also update the field mappings if this expression is a simple field reference
-        if (expression instanceof DeReferenceExpression) {
+        if (expression instanceof DeReferenceExpression && ((DeReferenceExpression) expression).isQualifiedName()) {
             int fieldIndex = analysis.getResolvedNames(expression).get(expression);
             fieldSymbols[fieldIndex] = symbol;
         }
@@ -137,7 +138,7 @@ class TranslationMap
         if (fieldOrExpression.isFieldReference()) {
             int fieldIndex = fieldOrExpression.getFieldIndex();
             fieldSymbols[fieldIndex] = symbol;
-            expressionMappings.put(new DeReferenceExpression(rewriteBase.getSymbol(fieldIndex).toQualifiedName()), symbol);
+            expressionMappings.put(new DeReferenceExpression(rewriteBase.getSymbol(fieldIndex).getName()), symbol);
         }
         else {
             put(fieldOrExpression.getExpression(), symbol);
@@ -188,17 +189,29 @@ class TranslationMap
             @Override
             public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
-                Integer fieldIndex = resolvedNames.get(node);
-                Preconditions.checkState(fieldIndex != null, "No field mapping for node '%s'", node);
-
-                Symbol symbol = rewriteBase.getSymbol(fieldIndex);
-                Preconditions.checkState(symbol != null, "No symbol mapping for node '%s' (%s)", node, fieldIndex);
-
-                Expression rewrittenExpression = new DeReferenceExpression(symbol.toQualifiedName());
-
+                Expression rewrittenExpression;
                 if (analysis.isRowFieldReference(node)) {
-                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getName().getSuffix()));
-                    rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenExpression));
+                    // Any Row field reference DeReference has a base.
+                    Expression baseExpression = node.getBase().get();
+                    Expression rewrittenBaseExpression;
+                    if (baseExpression instanceof DeReferenceExpression) {
+                        rewrittenBaseExpression = rewriteDeReferenceExpression((DeReferenceExpression) baseExpression, context, treeRewriter);
+                    }
+                    else {
+                        rewrittenBaseExpression = rewriteExpression(baseExpression, context, treeRewriter);
+                    }
+
+                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getFieldName()));
+                    rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenBaseExpression));
+                }
+                else {
+                    Integer fieldIndex = resolvedNames.get(node);
+                    checkState(fieldIndex != null, "No field mapping for node '%s'", node);
+
+                    Symbol symbol = rewriteBase.getSymbol(fieldIndex);
+                    checkState(symbol != null, "No symbol mapping for node '%s' (%s)", node, fieldIndex);
+
+                    rewrittenExpression = new DeReferenceExpression(symbol.getName());
                 }
 
                 // cast expression if coercion is registered

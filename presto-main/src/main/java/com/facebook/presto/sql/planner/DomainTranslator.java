@@ -91,7 +91,7 @@ public final class DomainTranslator
         ImmutableList.Builder<Expression> conjunctBuilder = ImmutableList.builder();
         for (Map.Entry<Symbol, Domain> entry : tupleDomain.getDomains().entrySet()) {
             Symbol symbol = entry.getKey();
-            DeReferenceExpression reference = new DeReferenceExpression(symbol.toQualifiedName());
+            DeReferenceExpression reference = new DeReferenceExpression(symbol.getName());
             Type type = symbolTypes.get(symbol);
             conjunctBuilder.add(toPredicate(entry.getValue(), reference, type));
         }
@@ -317,7 +317,7 @@ public final class DomainTranslator
                 return super.visitComparisonExpression(node, complement);
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(((DeReferenceExpression) node.getLeft()).getName());
+            Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) node.getLeft());
             Type columnType = checkedTypeLookup(symbol);
             Object value = LiteralInterpreter.evaluate(metadata, session, node.getRight());
 
@@ -432,7 +432,7 @@ public final class DomainTranslator
                 return super.visitIsNullPredicate(node, complement);
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(((DeReferenceExpression) node.getValue()).getName());
+            Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) node.getValue());
             Type columnType = checkedTypeLookup(symbol);
             Domain domain = complementIfNecessary(Domain.onlyNull(wrap(columnType.getJavaType())), complement);
             return new ExtractionResult(
@@ -447,7 +447,7 @@ public final class DomainTranslator
                 return super.visitIsNotNullPredicate(node, complement);
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(((DeReferenceExpression) node.getValue()).getName());
+            Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) node.getValue());
             Type columnType = checkedTypeLookup(symbol);
 
             Domain domain = complementIfNecessary(Domain.notNull(wrap(columnType.getJavaType())), complement);

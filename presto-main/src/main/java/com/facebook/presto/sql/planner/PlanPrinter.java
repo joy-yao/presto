@@ -212,8 +212,8 @@ public class PlanPrinter
             List<Expression> joinExpressions = new ArrayList<>();
             for (JoinNode.EquiJoinClause clause : node.getCriteria()) {
                 joinExpressions.add(new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                        new DeReferenceExpression(clause.getLeft().toQualifiedName()),
-                        new DeReferenceExpression(clause.getRight().toQualifiedName())));
+                        new DeReferenceExpression(clause.getLeft().getName()),
+                        new DeReferenceExpression(clause.getRight().getName())));
             }
 
             print(indent, "- %s[%s] => [%s]", node.getType().getJoinLabel(), Joiner.on(" AND ").join(joinExpressions), formatOutputs(node.getOutputSymbols()));
@@ -251,8 +251,8 @@ public class PlanPrinter
             List<Expression> joinExpressions = new ArrayList<>();
             for (IndexJoinNode.EquiJoinClause clause : node.getCriteria()) {
                 joinExpressions.add(new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                        new DeReferenceExpression(clause.getProbe().toQualifiedName()),
-                        new DeReferenceExpression(clause.getIndex().toQualifiedName())));
+                        new DeReferenceExpression(clause.getProbe().getName()),
+                        new DeReferenceExpression(clause.getIndex().getName())));
             }
 
             print(indent, "- %sIndexJoin[%s] => [%s]", node.getType().getJoinLabel(), Joiner.on(" AND ").join(joinExpressions), formatOutputs(node.getOutputSymbols()));
@@ -469,7 +469,9 @@ public class PlanPrinter
         {
             print(indent, "- Project => [%s]", formatOutputs(node.getOutputSymbols()));
             for (Map.Entry<Symbol, Expression> entry : node.getAssignments().entrySet()) {
-                if (entry.getValue() instanceof DeReferenceExpression && ((DeReferenceExpression) entry.getValue()).getName().equals(entry.getKey().toQualifiedName())) {
+                if (entry.getValue() instanceof DeReferenceExpression
+                        && !((DeReferenceExpression) entry.getValue()).getBase().isPresent()
+                        && ((DeReferenceExpression) entry.getValue()).getFieldName().equals(entry.getKey().toQualifiedName())) {
                     // skip identity assignments
                     continue;
                 }

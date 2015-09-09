@@ -209,7 +209,7 @@ public final class ExpressionUtils
 
                 ImmutableList.Builder<Expression> nullConjuncts = ImmutableList.builder();
                 for (Symbol symbol : symbols) {
-                    nullConjuncts.add(new IsNullPredicate(new DeReferenceExpression(symbol.toQualifiedName())));
+                    nullConjuncts.add(new IsNullPredicate(new DeReferenceExpression(symbol.getName())));
                 }
 
                 resultDisjunct.add(and(nullConjuncts.build()));

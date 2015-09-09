@@ -42,6 +42,6 @@ public class TestDeterminismEvaluator
 
     private static DeReferenceExpression input(String symbol)
     {
-        return new DeReferenceExpression(QualifiedName.of(symbol));
+        return new DeReferenceExpression(symbol);
     }
 }

@@ -583,7 +583,7 @@ public class TestEffectivePredicateExtractor
 
     private static Expression symbolExpr(Symbol symbol)
     {
-        return new DeReferenceExpression(symbol.toQualifiedName());
+        return new DeReferenceExpression(symbol.getName());
     }
 
     private static Expression number(long number)

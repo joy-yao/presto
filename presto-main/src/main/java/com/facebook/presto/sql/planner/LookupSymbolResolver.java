@@ -46,7 +46,7 @@ public class LookupSymbolResolver
         checkArgument(column != null, "Missing column assignment for %s", symbol);
 
         if (!bindings.containsKey(column)) {
-            return new DeReferenceExpression(symbol.toQualifiedName());
+            return new DeReferenceExpression(symbol.getName());
         }
 
         Object value = bindings.get(column);

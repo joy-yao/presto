@@ -81,6 +81,8 @@ public class TestRowOperators
         assertFunction("array[test_row(1, 2)][1].col1", BIGINT, 2);
         assertFunction("test_row(FALSE, ARRAY [1, 2], MAP(ARRAY[1, 3], ARRAY[2.0, 4.0])).col1", new ArrayType(BIGINT), ImmutableList.of(1L, 2L));
         assertFunction("test_row(FALSE, ARRAY [1, 2], MAP(ARRAY[1, 3], ARRAY[2.0, 4.0])).col2", new MapType(BIGINT, DOUBLE), ImmutableMap.of(1L, 2.0, 3L, 4.0));
+        assertFunction("test_row(FALSE, ARRAY [1, 2], MAP(ARRAY[1, 3], ARRAY[2.0, 4.0])).col1[1]", BIGINT, 1);
+        assertFunction("test_row(1.0, ARRAY[22, 33, 44, 55], test_row(3, 4.0)).col1[2]", BIGINT, 33);
     }
 
     @Test

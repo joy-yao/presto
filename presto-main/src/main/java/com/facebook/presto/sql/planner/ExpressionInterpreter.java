@@ -299,12 +299,12 @@ public class ExpressionInterpreter
         @Override
         protected Object visitDeReferenceExpression(DeReferenceExpression node, Object context)
         {
-            if (node.getName().getPrefix().isPresent()) {
+            if (node.getBase().isPresent()) {
                 // not a symbol
                 return node;
             }
 
-            Symbol symbol = Symbol.fromQualifiedName(node.getName());
+            Symbol symbol = Symbol.fromDeReference(node);
             return ((SymbolResolver) context).getValue(symbol);
         }
 

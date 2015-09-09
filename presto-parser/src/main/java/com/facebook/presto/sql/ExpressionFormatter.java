@@ -24,6 +24,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.ExistsPredicate;
 import com.facebook.presto.sql.tree.Expression;
@@ -46,7 +47,6 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -224,7 +224,26 @@ public final class ExpressionFormatter
         @Override
         protected String visitDeReferenceExpression(DeReferenceExpression node, Boolean unmangleNames)
         {
-            return formatQualifiedName(node.getName());
+            String fieldName = formatIdentifier(node.getFieldName());
+            if (!node.getBase().isPresent()) {
+                return fieldName;
+            }
+
+            Expression base = node.getBase().get();
+            String baseString;
+            if (base instanceof DeReferenceExpression) {
+                baseString = visitDeReferenceExpression((DeReferenceExpression) base, unmangleNames);
+            }
+            else if (base instanceof FunctionCall) {
+                baseString = visitFunctionCall((FunctionCall) base, unmangleNames);
+            }
+            else if (base instanceof SubscriptExpression) {
+                baseString = visitSubscriptExpression((SubscriptExpression) base, unmangleNames);
+            }
+            else {
+                throw new RuntimeException(String.format("Unsupported base expression %s for DeReferenceExpression ", base));
+            }
+            return baseString + "." + formatIdentifier(node.getFieldName());
         }
 
         private static String formatQualifiedName(QualifiedName name)
