@@ -14,7 +14,7 @@
 package com.facebook.presto.sql.planner.plan;
 
 import com.facebook.presto.sql.planner.Symbol;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
@@ -100,9 +100,9 @@ public class UnionNode
     /**
      * Returns the output to input symbol mapping for the given source channel
      */
-    public Map<Symbol, QualifiedNameReference> sourceSymbolMap(int sourceIndex)
+    public Map<Symbol, DeReferenceExpression> sourceSymbolMap(int sourceIndex)
     {
-        ImmutableMap.Builder<Symbol, QualifiedNameReference> builder = ImmutableMap.<Symbol, QualifiedNameReference>builder();
+        ImmutableMap.Builder<Symbol, DeReferenceExpression> builder = ImmutableMap.<Symbol, DeReferenceExpression>builder();
         for (Map.Entry<Symbol, Collection<Symbol>> entry : symbolMapping.asMap().entrySet()) {
             builder.put(entry.getKey(), Iterables.get(entry.getValue(), sourceIndex).toQualifiedNameReference());
         }
@@ -114,7 +114,7 @@ public class UnionNode
      * Returns the input to output symbol mapping for the given source channel.
      * A single input symbol can map to multiple output symbols, thus requiring a Multimap.
      */
-    public Multimap<Symbol, QualifiedNameReference> outputSymbolMap(int sourceIndex)
+    public Multimap<Symbol, DeReferenceExpression> outputSymbolMap(int sourceIndex)
     {
         return Multimaps.transformValues(FluentIterable.from(getOutputSymbols())
                 .toMap(outputToSourceSymbolFunction(sourceIndex))

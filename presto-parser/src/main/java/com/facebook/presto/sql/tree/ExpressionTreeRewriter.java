@@ -600,7 +600,7 @@ public final class ExpressionTreeRewriter<C>
         }
 
         @Override
-        public Expression visitQualifiedNameReference(QualifiedNameReference node, Context<C> context)
+        public Expression visitQualifiedNameReference(DeReferenceExpression node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {
                 Expression result = rewriter.rewriteQualifiedNameReference(node, context.get(), ExpressionTreeRewriter.this);

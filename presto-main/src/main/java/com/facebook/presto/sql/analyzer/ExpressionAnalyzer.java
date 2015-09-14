@@ -58,7 +58,7 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -280,7 +280,7 @@ public class ExpressionAnalyzer
         }
 
         @Override
-        protected Type visitQualifiedNameReference(QualifiedNameReference node, AnalysisContext context)
+        protected Type visitQualifiedNameReference(DeReferenceExpression node, AnalysisContext context)
         {
             List<Field> matches = tupleDescriptor.resolveFields(node.getName());
             if (matches.isEmpty()) {
@@ -299,7 +299,7 @@ public class ExpressionAnalyzer
             return field.getType();
         }
 
-        private Type tryVisitRowFieldAccessor(QualifiedNameReference node)
+        private Type tryVisitRowFieldAccessor(DeReferenceExpression node)
         {
             if (node.getName().getParts().size() < 2) {
                 throw createMissingAttributeException(node);
@@ -336,7 +336,7 @@ public class ExpressionAnalyzer
             throw createMissingAttributeException(node);
         }
 
-        private SemanticException createMissingAttributeException(QualifiedNameReference node)
+        private SemanticException createMissingAttributeException(DeReferenceExpression node)
         {
             return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node.getName());
         }

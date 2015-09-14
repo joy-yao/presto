@@ -46,7 +46,7 @@ import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FrameBound;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.InPredicate;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.SortItem;
@@ -274,7 +274,7 @@ class QueryPlanner
 
         if (subPlan.getSampleWeight().isPresent()) {
             Symbol symbol = subPlan.getSampleWeight().get();
-            projections.put(symbol, new QualifiedNameReference(symbol.toQualifiedName()));
+            projections.put(symbol, new DeReferenceExpression(symbol.toQualifiedName()));
         }
 
         return new PlanBuilder(outputTranslations, new ProjectNode(idAllocator.getNextId(), subPlan.getRoot(), projections.build()), subPlan.getSampleWeight());
@@ -331,7 +331,7 @@ class QueryPlanner
         projections.putAll(coerce(uncoerced, subPlan, translations));
 
         for (Symbol symbol : alreadyCoerced) {
-            projections.put(symbol, new QualifiedNameReference(symbol.toQualifiedName()));
+            projections.put(symbol, new DeReferenceExpression(symbol.toQualifiedName()));
         }
 
         return new PlanBuilder(translations, new ProjectNode(idAllocator.getNextId(), subPlan.getRoot(), projections.build()), subPlan.getSampleWeight());
@@ -581,7 +581,7 @@ class QueryPlanner
 
         // add an identity projection for underlying plan
         for (Symbol symbol : subPlan.getRoot().getOutputSymbols()) {
-            Expression expression = new QualifiedNameReference(symbol.toQualifiedName());
+            Expression expression = new DeReferenceExpression(symbol.toQualifiedName());
             projections.put(symbol, expression);
         }
 

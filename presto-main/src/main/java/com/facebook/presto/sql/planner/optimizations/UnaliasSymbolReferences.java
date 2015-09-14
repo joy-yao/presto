@@ -54,7 +54,7 @@ import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.NullLiteral;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
@@ -328,9 +328,9 @@ public class UnaliasSymbolReferences
             for (Map.Entry<Symbol, Expression> entry : node.getAssignments().entrySet()) {
                 Expression expression = canonicalize(entry.getValue());
 
-                if (entry.getValue() instanceof QualifiedNameReference) {
+                if (entry.getValue() instanceof DeReferenceExpression) {
                     // Always map a trivial symbol projection
-                    Symbol symbol = Symbol.fromQualifiedName(((QualifiedNameReference) entry.getValue()).getName());
+                    Symbol symbol = Symbol.fromQualifiedName(((DeReferenceExpression) entry.getValue()).getName());
                     if (!symbol.equals(entry.getKey())) {
                         map(entry.getKey(), symbol);
                     }
@@ -491,10 +491,10 @@ public class UnaliasSymbolReferences
             return ExpressionTreeRewriter.rewriteWith(new ExpressionRewriter<Void>()
             {
                 @Override
-                public Expression rewriteQualifiedNameReference(QualifiedNameReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+                public Expression rewriteQualifiedNameReference(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
                 {
                     Symbol canonical = canonicalize(Symbol.fromQualifiedName(node.getName()));
-                    return new QualifiedNameReference(canonical.toQualifiedName());
+                    return new DeReferenceExpression(canonical.toQualifiedName());
                 }
             }, value);
         }

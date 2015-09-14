@@ -13,12 +13,12 @@
  */
 package com.facebook.presto.sql.tree;
 
-public class QualifiedNameReference
+public class DeReferenceExpression
         extends Expression
 {
     private final QualifiedName name;
 
-    public QualifiedNameReference(QualifiedName name)
+    public DeReferenceExpression(QualifiedName name)
     {
         this.name = name;
     }
@@ -49,7 +49,7 @@ public class QualifiedNameReference
             return false;
         }
 
-        QualifiedNameReference that = (QualifiedNameReference) o;
+        DeReferenceExpression that = (DeReferenceExpression) o;
 
         if (!name.equals(that.name)) {
             return false;

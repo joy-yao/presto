@@ -59,7 +59,7 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -160,7 +160,7 @@ public class ExpressionInterpreter
         expression.accept(new DefaultTraversalVisitor<Void, Void>()
         {
             @Override
-            protected Void visitQualifiedNameReference(QualifiedNameReference node, Void context)
+            protected Void visitQualifiedNameReference(DeReferenceExpression node, Void context)
             {
                 throw new SemanticException(EXPRESSION_NOT_CONSTANT, expression, "Constant expression cannot contain column references");
             }
@@ -297,7 +297,7 @@ public class ExpressionInterpreter
         }
 
         @Override
-        protected Object visitQualifiedNameReference(QualifiedNameReference node, Object context)
+        protected Object visitQualifiedNameReference(DeReferenceExpression node, Object context)
         {
             if (node.getName().getPrefix().isPresent()) {
                 // not a symbol

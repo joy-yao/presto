@@ -38,7 +38,7 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -103,8 +103,8 @@ public class AggregationAnalyzer
         // For a query like "SELECT * FROM T GROUP BY a", groupByExpressions will contain "a",
         // and the '*' will be expanded to Field references. Therefore we translate all simple name expressions
         // in the group by clause to fields they reference so that the expansion from '*' can be matched against them
-        for (Expression expression : Iterables.filter(expressions, instanceOf(QualifiedNameReference.class))) {
-            QualifiedName name = ((QualifiedNameReference) expression).getName();
+        for (Expression expression : Iterables.filter(expressions, instanceOf(DeReferenceExpression.class))) {
+            QualifiedName name = ((DeReferenceExpression) expression).getName();
 
             List<Field> fields = tupleDescriptor.resolveFields(name);
             Preconditions.checkState(fields.size() <= 1, "Found more than one field for name '%s': %s", name, fields);
@@ -332,7 +332,7 @@ public class AggregationAnalyzer
         }
 
         @Override
-        protected Boolean visitQualifiedNameReference(QualifiedNameReference node, Void context)
+        protected Boolean visitQualifiedNameReference(DeReferenceExpression node, Void context)
         {
             QualifiedName name = node.getName();
 

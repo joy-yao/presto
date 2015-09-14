@@ -25,7 +25,7 @@ import com.facebook.presto.sql.tree.InPredicate;
 import com.facebook.presto.sql.tree.Join;
 import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Relation;
@@ -136,9 +136,9 @@ public class Analysis
         return new IdentityHashMap<>(types);
     }
 
-    public boolean isRowFieldReference(QualifiedNameReference qualifiedNameReference)
+    public boolean isRowFieldReference(DeReferenceExpression deReferenceExpression)
     {
-        return rowFieldReferences.containsKey(qualifiedNameReference);
+        return rowFieldReferences.containsKey(deReferenceExpression);
     }
 
     public Type getType(Expression expression)

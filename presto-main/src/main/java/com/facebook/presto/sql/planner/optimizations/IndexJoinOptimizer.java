@@ -36,7 +36,7 @@ import com.facebook.presto.sql.planner.plan.SortNode;
 import com.facebook.presto.sql.planner.plan.TableScanNode;
 import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.QualifiedNameReference;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.google.common.base.Functions;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableBiMap;
@@ -191,8 +191,8 @@ public class IndexJoinOptimizer
 
     private static Symbol referenceToSymbol(Expression expression)
     {
-        checkArgument(expression instanceof QualifiedNameReference);
-        return Symbol.fromQualifiedName(((QualifiedNameReference) expression).getName());
+        checkArgument(expression instanceof DeReferenceExpression);
+        return Symbol.fromQualifiedName(((DeReferenceExpression) expression).getName());
     }
 
     /**
@@ -306,7 +306,7 @@ public class IndexJoinOptimizer
             // Rewrite the lookup symbols in terms of only the pre-projected symbols that have direct translations
             Set<Symbol> newLookupSymbols = context.get().getLookupSymbols().stream()
                     .map(node.getAssignments()::get)
-                    .filter(QualifiedNameReference.class::isInstance)
+                    .filter(DeReferenceExpression.class::isInstance)
                     .map(IndexJoinOptimizer::referenceToSymbol)
                     .collect(toImmutableSet());
 
@@ -432,7 +432,7 @@ public class IndexJoinOptimizer
             public Map<Symbol, Symbol> visitProject(ProjectNode node, Set<Symbol> lookupSymbols)
             {
                 // Map from output Symbols to source Symbols
-                Map<Symbol, Symbol> directSymbolTranslationOutputMap = Maps.transformValues(Maps.filterValues(node.getAssignments(), QualifiedNameReference.class::isInstance), IndexJoinOptimizer::referenceToSymbol);
+                Map<Symbol, Symbol> directSymbolTranslationOutputMap = Maps.transformValues(Maps.filterValues(node.getAssignments(), DeReferenceExpression.class::isInstance), IndexJoinOptimizer::referenceToSymbol);
                 Map<Symbol, Symbol> outputToSourceMap = FluentIterable.from(lookupSymbols)
                         .filter(in(directSymbolTranslationOutputMap.keySet()))
                         .toMap(Functions.forMap(directSymbolTranslationOutputMap));
