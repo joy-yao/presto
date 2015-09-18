@@ -17,6 +17,7 @@ import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultExpressionTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
@@ -60,12 +61,9 @@ public final class DependencyExtractor
             extends DefaultExpressionTraversalVisitor<Void, ImmutableList.Builder<Symbol>>
     {
         @Override
-        protected Void visitDeReferenceExpression(DeReferenceExpression node, ImmutableList.Builder<Symbol> builder)
+        protected Void visitQualifiedNameReference(QualifiedNameReference node, ImmutableList.Builder<Symbol> builder)
         {
-//            builder.add(Symbol.fromDeReference(node));
-            if (!node.getBase().isPresent()) {
-                builder.add(Symbol.fromDeReference(node));
-            }
+            builder.add(Symbol.fromQualifiedName(node.getName()));
             return null;
         }
     }
@@ -76,8 +74,14 @@ public final class DependencyExtractor
         @Override
         protected Void visitDeReferenceExpression(DeReferenceExpression node, ImmutableSet.Builder<QualifiedName> builder)
         {
-//            checkState(node.isQualifiedName(), "DeReference node is not a qualified name");
-            builder.add(node.getLongestQualifiedName());
+            builder.add(node.getQualifiedName());
+            return null;
+        }
+
+        @Override
+        protected Void visitQualifiedNameReference(QualifiedNameReference node, ImmutableSet.Builder<QualifiedName> builder)
+        {
+            builder.add(node.getName());
             return null;
         }
     }

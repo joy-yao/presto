@@ -25,7 +25,7 @@ import com.facebook.presto.sql.planner.plan.UnionNode;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
@@ -89,7 +89,7 @@ public class ProjectionPushDown
             ImmutableList.Builder<PlanNode> outputSources = ImmutableList.builder();
 
             for (int i = 0; i < unionNode.getSources().size(); i++) {
-                Map<Symbol, DeReferenceExpression> outputToInput = unionNode.sourceSymbolMap(i);   // Map: output of union -> input of this source to the union
+                Map<Symbol, QualifiedNameReference> outputToInput = unionNode.sourceSymbolMap(i);   // Map: output of union -> input of this source to the union
                 ImmutableMap.Builder<Symbol, Expression> assignments = ImmutableMap.builder();      // assignments for the new ProjectNode
 
                 // mapping from current ProjectNode to new ProjectNode, used to identify the output layout
@@ -111,17 +111,17 @@ public class ProjectionPushDown
         }
     }
 
-    private static Expression translateExpression(Expression inputExpression, Map<Symbol, DeReferenceExpression> symbolMapping)
+    private static Expression translateExpression(Expression inputExpression, Map<Symbol, QualifiedNameReference> symbolMapping)
     {
         return ExpressionTreeRewriter.rewriteWith(new ExpressionRewriter<Void>()
         {
             @Override
-            public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+            public Expression rewriteQualifiedNameReference(QualifiedNameReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
-                DeReferenceExpression deReferenceExpression = symbolMapping.get(Symbol.fromDeReference(node));
-                checkState(deReferenceExpression != null, "Cannot resolve symbol %s", node.getName());
+                QualifiedNameReference qualifiedNameReference = symbolMapping.get(Symbol.fromQualifiedName(node.getName()));
+                checkState(qualifiedNameReference != null, "Cannot resolve symbol %s", node.getName());
 
-                return deReferenceExpression;
+                return qualifiedNameReference;
             }
         }, inputExpression);
     }

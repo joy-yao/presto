@@ -51,6 +51,7 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.RenameColumn;
@@ -611,7 +612,7 @@ public class TestSqlParser
 
         assertStatement("SET SESSION foo.bar = 'ban' || 'ana'", new SetSession(
                 QualifiedName.of("foo", "bar"),
-                new FunctionCall(new QualifiedName("concat"), ImmutableList.of(
+                new FunctionCall(QualifiedName.of("concat"), ImmutableList.of(
                         new StringLiteral("ban"),
                         new StringLiteral("ana")))));
     }
@@ -664,29 +665,29 @@ public class TestSqlParser
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
                         ImmutableList.of(),
                         Optional.empty()));
 
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1 ORDER BY y",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
-                        ImmutableList.of(new SortItem(new DeReferenceExpression("y"), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
+                        ImmutableList.of(new SortItem(new QualifiedNameReference(QualifiedName.of("y")), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
                         Optional.empty()));
 
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1 ORDER BY y LIMIT 10",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
-                        ImmutableList.of(new SortItem(new DeReferenceExpression("y"), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
+                        ImmutableList.of(new SortItem(new QualifiedNameReference(QualifiedName.of("y")), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
                         Optional.of("10")));
 
         assertStatement("SHOW PARTITIONS FROM t WHERE x = 1 ORDER BY y LIMIT ALL",
                 new ShowPartitions(
                         QualifiedName.of("t"),
-                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new DeReferenceExpression("x"), new LongLiteral("1"))),
-                        ImmutableList.of(new SortItem(new DeReferenceExpression("y"), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
+                        Optional.of(new ComparisonExpression(ComparisonExpression.Type.EQUAL, new QualifiedNameReference(QualifiedName.of("x")), new LongLiteral("1"))),
+                        ImmutableList.of(new SortItem(new QualifiedNameReference(QualifiedName.of("y")), SortItem.Ordering.ASCENDING, SortItem.NullOrdering.UNDEFINED)),
                         Optional.of("ALL")));
     }
 
@@ -694,68 +695,62 @@ public class TestSqlParser
     public void testSelectWithRowType()
             throws Exception
     {
-//        assertStatement("SELECT col1.f1, col2, col3.f1.f2.f3 FROM table1",
-//                new Query(
-//                        Optional.empty(),
-//                        new QuerySpecification(
-//                                selectList(
-//                                        new DeReferenceExpression(Optional.of(new DeReferenceExpression("col1")), "f1"),
-//                                        new DeReferenceExpression("col2"),
-//                                        new DeReferenceExpression(
-//                                                Optional.of(new DeReferenceExpression(Optional.of(new DeReferenceExpression(Optional.of(new DeReferenceExpression("col3")), "f1")), "f2")),
-//                                                "f3")),
-//                                Optional.of(new Table(QualifiedName.of("table1"))),
-//                                Optional.empty(),
-//                                ImmutableList.of(),
-//                                Optional.empty(),
-//                                ImmutableList.of(),
-//                                Optional.empty()),
-//                        ImmutableList.<SortItem>of(),
-//                        Optional.empty(),
-//                        Optional.empty()));
-//
-//        assertStatement("SELECT test_row(1, 2, 3)[2] FROM table1",
-//                new Query(
-//                        Optional.empty(),
-//                        new QuerySpecification(
-//                                selectList(
-//                                        new SubscriptExpression(
-//                                                new FunctionCall(new QualifiedName("test_row"), ImmutableList.of(new LongLiteral("1"), new LongLiteral("2"), new LongLiteral("3"))),
-//                                                new LongLiteral("2"))),
-//                                Optional.of(new Table(QualifiedName.of("table1"))),
-//                                Optional.empty(),
-//                                ImmutableList.of(),
-//                                Optional.empty(),
-//                                ImmutableList.of(),
-//                                Optional.empty()),
-//                        ImmutableList.<SortItem>of(),
-//                        Optional.empty(),
-//                        Optional.empty()));
-//
-//        assertStatement("SELECT col1.f1[0], col2, col3[2].f2.f3, col4[4] FROM table1",
-//                new Query(
-//                        Optional.empty(),
-//                        new QuerySpecification(
-//                                selectList(
-//                                        new SubscriptExpression(new DeReferenceExpression(Optional.of(new DeReferenceExpression("col1")), "f1"), new LongLiteral("0")),
-//                                        new DeReferenceExpression("col2"),
-//                                        new FunctionCall(
-//                                                new QualifiedName()
-//                                        ),
-////                                        new DeReferenceExpression(
-////                                                Optional.of(new DeReferenceExpression(Optional.of(new SubscriptExpression(new DeReferenceExpression("col3"), new LongLiteral("2"))), "f2")),
-////                                                "f3"),
-//                                        new SubscriptExpression(new DeReferenceExpression("col4"), new LongLiteral("4"))
-//                                ),
-//                                Optional.of(new Table(QualifiedName.of("table1"))),
-//                                Optional.empty(),
-//                                ImmutableList.of(),
-//                                Optional.empty(),
-//                                ImmutableList.of(),
-//                                Optional.empty()),
-//                        ImmutableList.<SortItem>of(),
-//                        Optional.empty(),
-//                        Optional.empty()));
+        assertStatement("SELECT col1.f1, col2, col3.f1.f2.f3 FROM table1",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(
+                                        new DeReferenceExpression(new QualifiedNameReference(QualifiedName.of("col1")), "f1"),
+                                        new QualifiedNameReference(QualifiedName.of("col2")),
+                                        new DeReferenceExpression(
+                                                new DeReferenceExpression(new DeReferenceExpression(new QualifiedNameReference(QualifiedName.of("col3")), "f1"), "f2"), "f3")),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty()),
+                        ImmutableList.<SortItem>of(),
+                        Optional.empty(),
+                        Optional.empty()));
+
+        assertStatement("SELECT test_row(1, 2, 3)[2] FROM table1",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(
+                                        new SubscriptExpression(
+                                                new FunctionCall(QualifiedName.of("test_row"), ImmutableList.of(new LongLiteral("1"), new LongLiteral("2"), new LongLiteral("3"))),
+                                                new LongLiteral("2"))),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty()),
+                        ImmutableList.<SortItem>of(),
+                        Optional.empty(),
+                        Optional.empty()));
+
+        assertStatement("SELECT col1.f1[0], col2, col3[2].f2.f3, col4[4] FROM table1",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(
+                                        new SubscriptExpression(new DeReferenceExpression(new QualifiedNameReference(QualifiedName.of("col1")), "f1"), new LongLiteral("0")),
+                                        new QualifiedNameReference(QualifiedName.of("col2")),
+                                        new DeReferenceExpression(new DeReferenceExpression(new SubscriptExpression(new QualifiedNameReference(QualifiedName.of("col3")), new LongLiteral("2")), "f2"), "f3"),
+                                        new SubscriptExpression(new QualifiedNameReference(QualifiedName.of("col4")), new LongLiteral("4"))
+                                ),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty(),
+                                ImmutableList.of(),
+                                Optional.empty()),
+                        ImmutableList.<SortItem>of(),
+                        Optional.empty(),
+                        Optional.empty()));
     }
 
     @Test
@@ -793,7 +788,7 @@ public class TestSqlParser
                         ImmutableMap.<String, Expression>builder()
                                 .put("string", new StringLiteral("bar"))
                                 .put("long", new LongLiteral("42"))
-                                .put("computed", new FunctionCall(new QualifiedName("concat"), ImmutableList.of(
+                                .put("computed", new FunctionCall(QualifiedName.of("concat"), ImmutableList.of(
                                         new StringLiteral("ban"),
                                         new StringLiteral("ana"))))
                                 .build()));
@@ -840,8 +835,8 @@ public class TestSqlParser
 
         assertStatement("DELETE FROM t WHERE a = b", new Delete(table(QualifiedName.of("t")), Optional.of(
                 new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                        new DeReferenceExpression("a"),
-                        new DeReferenceExpression("b")))));
+                        new QualifiedNameReference(QualifiedName.of("a")),
+                        new QualifiedNameReference(QualifiedName.of("b"))))));
     }
 
     @Test
@@ -975,7 +970,7 @@ public class TestSqlParser
                         new Join(
                                 Join.Type.CROSS,
                                 new Table(QualifiedName.of("t")),
-                                new Unnest(ImmutableList.of(new DeReferenceExpression("a")), false),
+                                new Unnest(ImmutableList.of(new QualifiedNameReference(QualifiedName.of("a"))), false),
                                 Optional.empty())));
         assertStatement("SELECT * FROM t CROSS JOIN UNNEST(a) WITH ORDINALITY",
                 simpleQuery(
@@ -983,7 +978,7 @@ public class TestSqlParser
                         new Join(
                                 Join.Type.CROSS,
                                 new Table(QualifiedName.of("t")),
-                                new Unnest(ImmutableList.of(new DeReferenceExpression("a")), true),
+                                new Unnest(ImmutableList.of(new QualifiedNameReference(QualifiedName.of("a"))), true),
                                 Optional.empty())));
     }
 

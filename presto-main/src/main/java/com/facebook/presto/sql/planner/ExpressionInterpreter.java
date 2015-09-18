@@ -41,6 +41,7 @@ import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
@@ -59,7 +60,7 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -161,6 +162,12 @@ public class ExpressionInterpreter
         {
             @Override
             protected Void visitDeReferenceExpression(DeReferenceExpression node, Void context)
+            {
+                throw new SemanticException(EXPRESSION_NOT_CONSTANT, expression, "Constant expression cannot contain column references");
+            }
+
+            @Override
+            protected Void visitQualifiedNameReference(QualifiedNameReference node, Void context)
             {
                 throw new SemanticException(EXPRESSION_NOT_CONSTANT, expression, "Constant expression cannot contain column references");
             }
@@ -299,12 +306,18 @@ public class ExpressionInterpreter
         @Override
         protected Object visitDeReferenceExpression(DeReferenceExpression node, Object context)
         {
-            if (node.getBase().isPresent()) {
+            return node;
+        }
+
+        @Override
+        protected Object visitQualifiedNameReference(QualifiedNameReference node, Object context)
+        {
+            if (node.getName().getParts().size() > 1) {
                 // not a symbol
                 return node;
             }
 
-            Symbol symbol = Symbol.fromDeReference(node);
+            Symbol symbol = Symbol.fromQualifiedName(node.getName());
             return ((SymbolResolver) context).getValue(symbol);
         }
 

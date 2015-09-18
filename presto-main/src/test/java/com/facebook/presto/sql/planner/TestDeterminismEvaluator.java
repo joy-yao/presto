@@ -16,7 +16,7 @@ package com.facebook.presto.sql.planner;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -40,8 +40,8 @@ public class TestDeterminismEvaluator
         return new FunctionCall(new QualifiedName(name), Arrays.asList(inputs));
     }
 
-    private static DeReferenceExpression input(String symbol)
+    private static QualifiedNameReference input(String symbol)
     {
-        return new DeReferenceExpression(symbol);
+        return new QualifiedNameReference(QualifiedName.of(symbol));
     }
 }

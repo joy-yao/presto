@@ -13,31 +13,30 @@
  */
 package com.facebook.presto.sql.tree;
 
-/**
- * A reference to an execution engine channel.
- * <p>
- * This is used to replace a {@link QualifiedNameReference} with a direct reference to the physical
- * channel and field to avoid unnecessary lookups in a symbol->channel map during evaluation
- */
-public class InputReference
+public class QualifiedNameReference
         extends Expression
 {
-    private final int channel;
+    private final QualifiedName name;
 
-    public InputReference(int channel)
+    public QualifiedNameReference(QualifiedName name)
     {
-        this.channel = channel;
+        this.name = name;
     }
 
-    public int getChannel()
+    public QualifiedName getName()
     {
-        return channel;
+        return name;
+    }
+
+    public QualifiedName getSuffix()
+    {
+        return QualifiedName.of(name.getSuffix());
     }
 
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
-        return visitor.visitInputReference(this, context);
+        return visitor.visitQualifiedNameReference(this, context);
     }
 
     @Override
@@ -50,14 +49,18 @@ public class InputReference
             return false;
         }
 
-        InputReference that = (InputReference) o;
+        QualifiedNameReference that = (QualifiedNameReference) o;
 
-        return channel == that.channel;
+        if (!name.equals(that.name)) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override
     public int hashCode()
     {
-        return channel;
+        return name.hashCode();
     }
 }

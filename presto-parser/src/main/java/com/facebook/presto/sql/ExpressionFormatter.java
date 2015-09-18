@@ -47,6 +47,7 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -222,14 +223,15 @@ public final class ExpressionFormatter
         }
 
         @Override
+        protected String visitQualifiedNameReference(QualifiedNameReference node, Boolean unmangleNames)
+        {
+            return formatQualifiedName(node.getName());
+        }
+
+        @Override
         protected String visitDeReferenceExpression(DeReferenceExpression node, Boolean unmangleNames)
         {
-            String fieldName = formatIdentifier(node.getFieldName());
-            if (!node.getBase().isPresent()) {
-                return fieldName;
-            }
-
-            Expression base = node.getBase().get();
+            Expression base = node.getBase();
             String baseString;
             if (base instanceof DeReferenceExpression) {
                 baseString = visitDeReferenceExpression((DeReferenceExpression) base, unmangleNames);
@@ -239,6 +241,9 @@ public final class ExpressionFormatter
             }
             else if (base instanceof SubscriptExpression) {
                 baseString = visitSubscriptExpression((SubscriptExpression) base, unmangleNames);
+            }
+            else if (base instanceof QualifiedNameReference) {
+                baseString = visitQualifiedNameReference((QualifiedNameReference) base, unmangleNames);
             }
             else {
                 throw new RuntimeException(String.format("Unsupported base expression %s for DeReferenceExpression ", base));

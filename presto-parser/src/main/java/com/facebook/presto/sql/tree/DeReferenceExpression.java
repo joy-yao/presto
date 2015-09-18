@@ -14,26 +14,21 @@
 package com.facebook.presto.sql.tree;
 
 import java.util.Objects;
-import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 public class DeReferenceExpression
         extends Expression
 {
-    private final Optional<Expression> base; // base can be DeReference or FunctionCall or SubscriptExpression
+    private final Expression base;
     private final String fieldName;
 
-    private QualifiedName longestQualifiedName;
+    private QualifiedName qualifiedName;
     private boolean isQualifiedName;
-    private boolean longestQualifiedNameCalculated;
+    private boolean qualifiedNameCalculated;
 
-    public DeReferenceExpression(String fieldName)
-    {
-        this(Optional.empty(), fieldName);
-    }
-
-    public DeReferenceExpression(Optional<Expression> base, String fieldName)
+    public DeReferenceExpression(Expression base, String fieldName)
     {
         this.base = base;
         checkArgument(fieldName != null, "fieldName is null");
@@ -46,7 +41,7 @@ public class DeReferenceExpression
         return visitor.visitDeReferenceExpression(this, context);
     }
 
-    public Optional<Expression> getBase()
+    public Expression getBase()
     {
         return base;
     }
@@ -58,61 +53,40 @@ public class DeReferenceExpression
 
     public String getName()
     {
-        if (!base.isPresent()) {
-            return fieldName;
-        }
-
-        return base.get().toString() + "." + fieldName;
+        return base.toString() + "." + fieldName;
     }
 
     public boolean isQualifiedName()
     {
-        if (!longestQualifiedNameCalculated) {
-            calculateLongestQualifiedName();
+        if (!qualifiedNameCalculated) {
+            calculateQualifiedName();
         }
         return isQualifiedName;
     }
 
-    public QualifiedName getLongestQualifiedName()
+    public QualifiedName getQualifiedName()
     {
-        if (!longestQualifiedNameCalculated) {
-            calculateLongestQualifiedName();
+        if (!qualifiedNameCalculated) {
+            calculateQualifiedName();
         }
-        return longestQualifiedName;
+        checkState(isQualifiedName, "This DeReferenceExpression is not a qualifiedName");
+        return qualifiedName;
     }
 
-    private void calculateLongestQualifiedName()
+    private void calculateQualifiedName()
     {
-        if (!base.isPresent()) {
-            longestQualifiedName = new QualifiedName(fieldName);
+        if (base instanceof DeReferenceExpression) {
+            DeReferenceExpression baseExpression = (DeReferenceExpression) base;
+            if (baseExpression.isQualifiedName()) {
+                isQualifiedName = true;
+                qualifiedName = QualifiedName.of(baseExpression.getQualifiedName(), fieldName);
+            }
+        }
+        else if (base instanceof QualifiedNameReference) {
             isQualifiedName = true;
+            qualifiedName = QualifiedName.of(((QualifiedNameReference) base).getName(), fieldName);
         }
-        else {
-            Expression baseExpression = base.get();
-            if (baseExpression instanceof DeReferenceExpression) {
-                DeReferenceExpression base = (DeReferenceExpression) baseExpression;
-
-                if (base.isQualifiedName()) {
-                    isQualifiedName = true;
-                    longestQualifiedName = QualifiedName.of(base.getLongestQualifiedName(), fieldName);
-                }
-                else {
-                    longestQualifiedName = base.getLongestQualifiedName();
-                }
-            }
-            else if (baseExpression instanceof FunctionCall) {
-                FunctionCall base = (FunctionCall) baseExpression;
-                longestQualifiedName = base.getName();
-            }
-            else if (baseExpression instanceof SubscriptExpression) {
-                SubscriptExpression base = (SubscriptExpression) baseExpression;
-                if (base.getBase() instanceof DeReferenceExpression) {
-                    DeReferenceExpression deReferenceBase = (DeReferenceExpression) base.getBase();
-                    longestQualifiedName = deReferenceBase.getLongestQualifiedName();
-                }
-            }
-        }
-        longestQualifiedNameCalculated = true;
+        qualifiedNameCalculated = true;
     }
 
     @Override

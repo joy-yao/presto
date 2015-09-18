@@ -42,7 +42,7 @@ import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.IsNullPredicate;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.WindowFrame;
 import com.facebook.presto.type.UnknownType;
 import com.google.common.base.Preconditions;
@@ -583,7 +583,7 @@ public class TestEffectivePredicateExtractor
 
     private static Expression symbolExpr(Symbol symbol)
     {
-        return new DeReferenceExpression(symbol.getName());
+        return new QualifiedNameReference(symbol.toQualifiedName());
     }
 
     private static Expression number(long number)

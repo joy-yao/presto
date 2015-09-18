@@ -48,7 +48,7 @@ import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.NullLiteral;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -155,11 +155,11 @@ public class PredicatePushDown
             boolean modified = false;
             ImmutableList.Builder<PlanNode> builder = ImmutableList.builder();
             for (int i = 0; i < node.getSources().size(); i++) {
-                Map<Symbol, DeReferenceExpression> outputsToInputs = new HashMap<>();
+                Map<Symbol, QualifiedNameReference> outputsToInputs = new HashMap<>();
                 for (int index = 0; index < node.getInputs().get(i).size(); index++) {
                     outputsToInputs.put(
                             node.getOutputSymbols().get(index),
-                            node.getInputs().get(i).get(index).toDeReferenceExpression());
+                            node.getInputs().get(i).get(index).toQualifiedNameReference());
                 }
 
                 Expression sourcePredicate = ExpressionTreeRewriter.rewriteWith(new ExpressionSymbolInliner(outputsToInputs), context.get());
@@ -329,12 +329,12 @@ public class PredicatePushDown
 
                     leftProjections.putAll(node.getLeft()
                             .getOutputSymbols().stream()
-                            .collect(Collectors.toMap(key -> key, Symbol::toDeReferenceExpression)));
+                            .collect(Collectors.toMap(key -> key, Symbol::toQualifiedNameReference)));
 
                     ImmutableMap.Builder<Symbol, Expression> rightProjections = ImmutableMap.builder();
                     rightProjections.putAll(node.getRight()
                             .getOutputSymbols().stream()
-                            .collect(Collectors.toMap(key -> key, Symbol::toDeReferenceExpression)));
+                            .collect(Collectors.toMap(key -> key, Symbol::toQualifiedNameReference)));
 
                     // HACK! we don't support cross joins right now, so put in a simple fake join predicate instead if all of the join clauses got simplified out
                     // TODO: remove this code when cross join support is added
@@ -604,8 +604,8 @@ public class PredicatePushDown
         private static Expression equalsExpression(Symbol symbol1, Symbol symbol2)
         {
             return new ComparisonExpression(ComparisonExpression.Type.EQUAL,
-                    new DeReferenceExpression(symbol1.getName()),
-                    new DeReferenceExpression(symbol2.getName()));
+                    new QualifiedNameReference(symbol1.toQualifiedName()),
+                    new QualifiedNameReference(symbol2.toQualifiedName()));
         }
 
         private Type extractType(Expression expression)
@@ -677,7 +677,7 @@ public class PredicatePushDown
         {
             IdentityHashMap<Expression, Type> expressionTypes = getExpressionTypes(session, metadata, sqlParser, symbolAllocator.getTypes(), expression);
             return ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes)
-                    .optimize(symbol -> nullSymbols.contains(symbol) ? null : new DeReferenceExpression(symbol.getName()));
+                    .optimize(symbol -> nullSymbols.contains(symbol) ? null : new QualifiedNameReference(symbol.toQualifiedName()));
         }
 
         private static Predicate<Expression> joinEqualityExpression(final Collection<Symbol> leftSymbols)

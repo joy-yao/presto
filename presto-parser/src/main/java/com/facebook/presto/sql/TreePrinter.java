@@ -19,6 +19,7 @@ import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
@@ -28,7 +29,7 @@ import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Row;
@@ -236,6 +237,18 @@ public class TreePrinter
 
                 super.visitLikePredicate(node, indentLevel + 1);
 
+                return null;
+            }
+
+            @Override
+            protected Void visitQualifiedNameReference(QualifiedNameReference node, Integer indentLevel)
+            {
+                QualifiedName resolved = resolvedNameReferences.get(node);
+                String resolvedName = "";
+                if (resolved != null) {
+                    resolvedName = "=>" + resolved.toString();
+                }
+                print(indentLevel, "QualifiedName[" + node.getName() + resolvedName + "]");
                 return null;
             }
 

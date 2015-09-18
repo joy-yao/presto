@@ -67,6 +67,7 @@ import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QueryBody;
 import com.facebook.presto.sql.tree.QuerySpecification;
@@ -836,10 +837,10 @@ class AstBuilder
     public Node visitDeReference(SqlBaseParser.DeReferenceContext context)
     {
         if (context.base == null) {
-            return new DeReferenceExpression(Optional.empty(), context.fieldName.getText());
+            return new QualifiedNameReference(new QualifiedName(context.fieldName.getText()));
         }
 
-        return new DeReferenceExpression(Optional.of((Expression) visit(context.base)), context.fieldName.getText());
+        return new DeReferenceExpression((Expression) visit(context.base), context.fieldName.getText());
     }
 
     @Override

@@ -52,8 +52,8 @@ import com.facebook.presto.sql.planner.plan.TopNNode;
 import com.facebook.presto.sql.planner.plan.TopNRowNumberNode;
 import com.facebook.presto.sql.planner.plan.UnnestNode;
 import com.facebook.presto.sql.planner.plan.WindowNode;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -386,8 +386,8 @@ class PropertyDerivations
                 // ("ROW comparison not supported for fields with null elements", etc)
                 Object value = optimizer.optimize(NoOpSymbolResolver.INSTANCE);
 
-                if (value instanceof DeReferenceExpression) {
-                    Symbol symbol = Symbol.fromDeReference((DeReferenceExpression) value);
+                if (value instanceof QualifiedNameReference) {
+                    Symbol symbol = Symbol.fromQualifiedName(((QualifiedNameReference) value).getName());
                     value = constants.getOrDefault(symbol, value);
                 }
 
@@ -489,8 +489,8 @@ class PropertyDerivations
         {
             Map<Symbol, Symbol> inputToOutput = new HashMap<>();
             for (Map.Entry<Symbol, Expression> assignment : assignments.entrySet()) {
-                if (assignment.getValue() instanceof DeReferenceExpression) {
-                    inputToOutput.put(Symbol.fromDeReference((DeReferenceExpression) assignment.getValue()), assignment.getKey());
+                if (assignment.getValue() instanceof QualifiedNameReference) {
+                    inputToOutput.put(Symbol.fromQualifiedName(((QualifiedNameReference) assignment.getValue()).getName()), assignment.getKey());
                 }
             }
             return inputToOutput;

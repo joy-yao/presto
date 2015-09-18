@@ -60,6 +60,7 @@ import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.testing.LocalQueryRunner;
 import com.facebook.presto.testing.MaterializedResult;
 import com.google.common.collect.ImmutableList;
@@ -419,7 +420,7 @@ public final class FunctionAssertions
                     return rewriteExpression(node, context, treeRewriter);
                 }
 
-                Expression base = node.getBase().get();
+                Expression base = node.getBase();
                 Expression rewrittenBase;
                 if (base instanceof DeReferenceExpression) {
                     rewrittenBase = rewriteDeReferenceExpression((DeReferenceExpression) base, context, treeRewriter);
@@ -501,12 +502,20 @@ public final class FunctionAssertions
         projectionExpression.accept(new DefaultTraversalVisitor<Void, Void>()
         {
             @Override
+            protected Void visitQualifiedNameReference(QualifiedNameReference node, Void context)
+            {
+                hasDeReferenceExpression.set(true);
+                return null;
+            }
+
+            @Override
             protected Void visitDeReferenceExpression(DeReferenceExpression node, Void context)
             {
                 hasDeReferenceExpression.set(true);
                 return null;
             }
         }, null);
+
         return hasDeReferenceExpression.get();
     }
 

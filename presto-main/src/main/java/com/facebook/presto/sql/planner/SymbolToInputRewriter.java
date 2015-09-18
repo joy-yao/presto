@@ -17,7 +17,7 @@ import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.InputReference;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 
@@ -37,9 +37,9 @@ public class SymbolToInputRewriter
     }
 
     @Override
-    public Expression rewriteDeReferenceExpression(DeReferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
+    public Expression rewriteQualifiedNameReference(QualifiedNameReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
     {
-        Integer channel = symbolToChannelMapping.get(Symbol.fromDeReference(node));
+        Integer channel = symbolToChannelMapping.get(Symbol.fromQualifiedName(node.getName()));
         Preconditions.checkArgument(channel != null, "Cannot resolve symbol %s", node.getName());
 
         return new InputReference(channel);

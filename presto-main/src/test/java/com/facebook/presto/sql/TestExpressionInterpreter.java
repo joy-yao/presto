@@ -29,7 +29,7 @@ import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.LikePredicate;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.StringLiteral;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -1033,7 +1033,7 @@ public class TestExpressionInterpreter
                         return Slices.wrappedBuffer("%el%".getBytes(UTF_8));
                 }
 
-                return new DeReferenceExpression(symbol.getName());
+                return new QualifiedNameReference(symbol.toQualifiedName());
             }
         });
     }

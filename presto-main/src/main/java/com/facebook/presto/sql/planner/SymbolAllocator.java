@@ -18,7 +18,7 @@ import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.analyzer.Field;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.primitives.Ints;
 
 import java.util.HashMap;
@@ -84,8 +84,8 @@ public class SymbolAllocator
     public Symbol newSymbol(Expression expression, Type type, String suffix)
     {
         String nameHint = "expr";
-        if (expression instanceof DeReferenceExpression) {
-            nameHint = ((DeReferenceExpression) expression).getFieldName();
+        if (expression instanceof QualifiedNameReference) {
+            nameHint = ((QualifiedNameReference) expression).getName().getSuffix();
         }
         else if (expression instanceof FunctionCall) {
             nameHint = ((FunctionCall) expression).getName().getSuffix();

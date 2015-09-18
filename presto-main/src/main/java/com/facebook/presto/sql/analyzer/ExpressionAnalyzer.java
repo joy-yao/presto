@@ -58,6 +58,8 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
+import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -128,7 +130,7 @@ public class ExpressionAnalyzer
     private final FunctionRegistry functionRegistry;
     private final TypeManager typeManager;
     private final Function<Node, StatementAnalyzer> statementAnalyzerFactory;
-    private final Map<Expression, Integer> resolvedNames = new HashMap<>();
+    private final Map<QualifiedName, Integer> resolvedNames = new HashMap<>();
     private final IdentityHashMap<FunctionCall, FunctionInfo> resolvedFunctions = new IdentityHashMap<>();
     private final IdentityHashMap<Expression, Type> expressionTypes = new IdentityHashMap<>();
     private final IdentityHashMap<Expression, Type> expressionCoercions = new IdentityHashMap<>();
@@ -144,7 +146,7 @@ public class ExpressionAnalyzer
         this.session = requireNonNull(session, "session is null");
     }
 
-    public Map<Expression, Integer> getResolvedNames()
+    public Map<QualifiedName, Integer> getResolvedNames()
     {
         return resolvedNames;
     }
@@ -279,10 +281,29 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitQualifiedNameReference(QualifiedNameReference node, AnalysisContext context)
+        {
+            List<Field> matches = tupleDescriptor.resolveFields(node.getName());
+            if (matches.isEmpty()) {
+                throw createMissingAttributeException(node);
+            }
+            if (matches.size() > 1) {
+                throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
+            }
+
+            Field field = Iterables.getOnlyElement(matches);
+            int fieldIndex = tupleDescriptor.indexOf(field);
+            resolvedNames.put(node.getName(), fieldIndex);
+            expressionTypes.put(node, field.getType());
+
+            return field.getType();
+        }
+
+        @Override
         protected Type visitDeReferenceExpression(DeReferenceExpression node, AnalysisContext context)
         {
             if (node.isQualifiedName()) {
-                List<Field> matches = tupleDescriptor.resolveFields(node.getLongestQualifiedName());
+                List<Field> matches = tupleDescriptor.resolveFields(node.getQualifiedName());
                 if (matches.size() > 1) {
                     throw new SemanticException(AMBIGUOUS_ATTRIBUTE, node, "Column '%s' is ambiguous", node.getName());
                 }
@@ -290,19 +311,16 @@ public class ExpressionAnalyzer
                 if (matches.size() == 1) {
                     Field field = Iterables.getOnlyElement(matches);
                     int fieldIndex = tupleDescriptor.indexOf(field);
-                    resolvedNames.put(node, fieldIndex);
+                    resolvedNames.put(node.getQualifiedName(), fieldIndex);
                     expressionTypes.put(node, field.getType());
 
                     return field.getType();
                 }
                 // No match
-                if (!node.getBase().isPresent()) {
-                    throw createMissingAttributeException(node);
-                }
             }
 
             // If node is not qualifiedName, it must has a base.
-            Expression base = node.getBase().get();
+            Expression base = node.getBase();
             Type baseType;
 
             // We have a ancestor that is not a DeReference.
@@ -314,6 +332,9 @@ public class ExpressionAnalyzer
             }
             else if (base instanceof SubscriptExpression) {
                 baseType = visitSubscriptExpression((SubscriptExpression) base, context);
+            }
+            else if (base instanceof QualifiedNameReference) {
+                baseType = visitQualifiedNameReference((QualifiedNameReference) base, context);
             }
             else {
                 throw new RuntimeException(String.format("Unsupported base expression %s for DeReferenceExpression ", base));
@@ -333,17 +354,24 @@ public class ExpressionAnalyzer
             }
 
             // If the base is FunctionCall or SubscriptExpression, it won't be in resolvedNames.
-            if (resolvedNames.containsKey(base)) {
-                int fieldIndex = resolvedNames.get(base);
-                resolvedNames.put(node, fieldIndex);
+            QualifiedName qualifiedName = null;
+            if (base instanceof DeReferenceExpression && ((DeReferenceExpression) base).isQualifiedName()) {
+                qualifiedName = ((DeReferenceExpression) base).getQualifiedName();
+            }
+            else if (base instanceof QualifiedNameReference) {
+                qualifiedName = ((QualifiedNameReference) base).getName();
+            }
+
+            if (qualifiedName != null && resolvedNames.containsKey(qualifiedName)) {
+                int fieldIndex = resolvedNames.get(qualifiedName);
+                resolvedNames.put(node.getQualifiedName(), fieldIndex);
             }
             expressionTypes.put(node, rowFieldType);
             rowFieldReferences.put(node, true);
 
             return rowFieldType;
         }
-
-        private SemanticException createMissingAttributeException(DeReferenceExpression node)
+        private SemanticException createMissingAttributeException(Expression node)
         {
             return new SemanticException(MISSING_ATTRIBUTE, node, "Column '%s' cannot be resolved", node);
         }

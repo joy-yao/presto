@@ -58,6 +58,7 @@ import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.NaturalJoin;
 import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Relation;
@@ -475,8 +476,8 @@ public class TupleAnalyzer
 
             List<Expression> expressions = new ArrayList<>();
             for (String column : columns) {
-                Expression leftExpression = new DeReferenceExpression(column);
-                Expression rightExpression = new DeReferenceExpression(column);
+                Expression leftExpression = new QualifiedNameReference(new QualifiedName(column));
+                Expression rightExpression = new QualifiedNameReference(new QualifiedName(column));
 
                 ExpressionAnalysis leftExpressionAnalysis = analyzeExpression(leftExpression, left, context);
                 ExpressionAnalysis rightExpressionAnalysis = analyzeExpression(rightExpression, right, context);
@@ -772,10 +773,10 @@ public class TupleAnalyzer
                 Expression expression = item.getSortKey();
 
                 FieldOrExpression orderByExpression = null;
-                if (expression instanceof DeReferenceExpression && !((DeReferenceExpression) expression).getBase().isPresent()) {
+                if (expression instanceof QualifiedNameReference && !((QualifiedNameReference) expression).getName().getPrefix().isPresent()) {
                     // if this is a simple name reference, try to resolve against output columns
 
-                    QualifiedName name = QualifiedName.of(((DeReferenceExpression) expression).getFieldName());
+                    QualifiedName name = ((QualifiedNameReference) expression).getName();
                     Collection<Expression> expressions = byAlias.get(name);
                     if (expressions.size() > 1) {
                         throw new SemanticException(AMBIGUOUS_ATTRIBUTE, expression, "'%s' in ORDER BY is ambiguous", name.getSuffix());
@@ -901,6 +902,9 @@ public class TupleAnalyzer
                 Optional<String> alias = column.getAlias();
                 if (!alias.isPresent() && column.getExpression() instanceof DeReferenceExpression) {
                     alias = Optional.of(((DeReferenceExpression) column.getExpression()).getFieldName());
+                }
+                else if (!alias.isPresent() && column.getExpression() instanceof QualifiedNameReference) {
+                    alias = Optional.of(((QualifiedNameReference) column.getExpression()).getName().getSuffix());
                 }
 
                 outputFields.add(Field.newUnqualified(alias, analysis.getType(column.getExpression()))); // TODO don't use analysis as a side-channel. Use outputExpressions to look up the type

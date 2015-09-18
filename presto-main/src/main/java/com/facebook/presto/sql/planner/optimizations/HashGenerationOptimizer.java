@@ -37,7 +37,7 @@ import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Window;
 import com.facebook.presto.type.TypeUtils;
 import com.google.common.collect.ImmutableList;
@@ -292,7 +292,7 @@ public class HashGenerationOptimizer
         checkArgument(!partitioningSymbols.isEmpty(), "partitioningSymbols is empty");
         ImmutableMap.Builder<Symbol, Expression> outputSymbols = ImmutableMap.builder();
         for (Symbol symbol : source.getOutputSymbols()) {
-            Expression expression = new DeReferenceExpression(symbol.getName());
+            Expression expression = new QualifiedNameReference(symbol.toQualifiedName());
             outputSymbols.put(symbol, expression);
         }
 
@@ -312,7 +312,7 @@ public class HashGenerationOptimizer
 
     private static Expression getHashFunctionCall(Expression previousHashValue, Symbol symbol)
     {
-        FunctionCall functionCall = new FunctionCall(QualifiedName.of(HASH_CODE), Optional.<Window>empty(), false, ImmutableList.<Expression>of(new DeReferenceExpression(symbol.getName())));
+        FunctionCall functionCall = new FunctionCall(QualifiedName.of(HASH_CODE), Optional.<Window>empty(), false, ImmutableList.<Expression>of(new QualifiedNameReference(symbol.toQualifiedName())));
         List<Expression> arguments = ImmutableList.of(previousHashValue, orNullHashCode(functionCall));
         return new FunctionCall(QualifiedName.of("combine_hash"), arguments);
     }

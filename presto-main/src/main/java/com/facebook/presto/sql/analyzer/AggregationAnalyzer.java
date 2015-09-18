@@ -23,6 +23,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.CurrentTime;
+import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Extract;
 import com.facebook.presto.sql.tree.FunctionCall;
@@ -38,7 +39,7 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullIfExpression;
 import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
@@ -56,6 +57,7 @@ import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.facebook.presto.sql.analyzer.SemanticErrorCode.MUST_BE_AGGREGATE_OR_GROUP_BY;
 import static com.facebook.presto.sql.analyzer.SemanticErrorCode.NESTED_AGGREGATION;
@@ -63,7 +65,6 @@ import static com.facebook.presto.sql.analyzer.SemanticErrorCode.NESTED_WINDOW;
 import static com.facebook.presto.sql.analyzer.SemanticErrorCode.NOT_SUPPORTED;
 import static com.facebook.presto.util.ImmutableCollectors.toImmutableList;
 import static com.google.common.base.Predicates.equalTo;
-import static com.google.common.base.Predicates.instanceOf;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -103,8 +104,17 @@ public class AggregationAnalyzer
         // For a query like "SELECT * FROM T GROUP BY a", groupByExpressions will contain "a",
         // and the '*' will be expanded to Field references. Therefore we translate all simple name expressions
         // in the group by clause to fields they reference so that the expansion from '*' can be matched against them
-        for (Expression expression : Iterables.filter(expressions, instanceOf(DeReferenceExpression.class))) {
-            QualifiedName name = ((DeReferenceExpression) expression).getLongestQualifiedName();
+        List<Expression> filteredExpressions = expressions.stream()
+                .filter(expression1 -> ((expression1 instanceof DeReferenceExpression && ((DeReferenceExpression) expression1).isQualifiedName()) || expression1 instanceof QualifiedNameReference))
+                .collect(Collectors.toList());
+        for (Expression expression : filteredExpressions) {
+            QualifiedName name;
+            if (expression instanceof DeReferenceExpression) {
+                name = ((DeReferenceExpression) expression).getQualifiedName();
+            }
+            else {
+                name = ((QualifiedNameReference) expression).getName();
+            }
 
             List<Field> fields = tupleDescriptor.resolveFields(name);
             Preconditions.checkState(fields.size() <= 1, "Found more than one field for name '%s': %s", name, fields);
@@ -332,9 +342,22 @@ public class AggregationAnalyzer
         }
 
         @Override
+        protected Boolean visitQualifiedNameReference(QualifiedNameReference node, Void context)
+        {
+            QualifiedName name = node.getName();
+
+            List<Field> fields = tupleDescriptor.resolveFields(name);
+            Preconditions.checkState(!fields.isEmpty(), "No fields for name '%s'", name);
+            Preconditions.checkState(fields.size() <= 1, "Found more than one field for name '%s': %s", name, fields);
+
+            Field field = Iterables.getOnlyElement(fields);
+            return fieldIndexes.contains(tupleDescriptor.indexOf(field));
+        }
+
+        @Override
         protected Boolean visitDeReferenceExpression(DeReferenceExpression node, Void context)
         {
-            QualifiedName name = node.getLongestQualifiedName();
+            QualifiedName name = node.getQualifiedName();
 
             List<Field> fields = tupleDescriptor.resolveFields(name);
             Preconditions.checkState(!fields.isEmpty(), "No fields for name '%s'", name);

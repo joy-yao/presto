@@ -252,6 +252,11 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
+    protected R visitQualifiedNameReference(QualifiedNameReference node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitDeReferenceExpression(DeReferenceExpression node, C context)
     {
         return visitExpression(node, context);
