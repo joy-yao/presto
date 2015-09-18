@@ -43,7 +43,6 @@ import com.facebook.presto.sql.planner.optimizations.CanonicalizeExpressions;
 import com.facebook.presto.sql.tree.AliasedRelation;
 import com.facebook.presto.sql.tree.AllColumns;
 import com.facebook.presto.sql.tree.ComparisonExpression;
-import com.facebook.presto.sql.tree.DeReferenceExpression;
 import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
 import com.facebook.presto.sql.tree.Except;
 import com.facebook.presto.sql.tree.Expression;
@@ -390,18 +389,18 @@ public class TupleAnalyzer
             int descFieldSize = descriptor.getVisibleFields().size();
             if (outputFieldSize != descFieldSize) {
                 throw new SemanticException(MISMATCHED_SET_COLUMN_TYPES,
-                        node,
-                        "union query has different number of fields: %d, %d",
-                        outputFieldSize, descFieldSize);
+                                            node,
+                                            "union query has different number of fields: %d, %d",
+                                            outputFieldSize, descFieldSize);
             }
             for (int i = 0; i < descriptor.getVisibleFields().size(); i++) {
                 Type descFieldType = descriptor.getFieldByIndex(i).getType();
                 Optional<Type> commonSuperType = FunctionRegistry.getCommonSuperType(outputFieldTypes[i], descFieldType);
                 if (!commonSuperType.isPresent()) {
                     throw new SemanticException(TYPE_MISMATCH,
-                            node,
-                            "column %d in union query has incompatible types: %s, %s",
-                            i, outputFieldTypes[i].getDisplayName(), descFieldType.getDisplayName());
+                                                node,
+                                                "column %d in union query has incompatible types: %s, %s",
+                                                i, outputFieldTypes[i].getDisplayName(), descFieldType.getDisplayName());
                 }
                 outputFieldTypes[i] = commonSuperType.get();
             }
@@ -476,8 +475,8 @@ public class TupleAnalyzer
 
             List<Expression> expressions = new ArrayList<>();
             for (String column : columns) {
-                Expression leftExpression = new QualifiedNameReference(new QualifiedName(column));
-                Expression rightExpression = new QualifiedNameReference(new QualifiedName(column));
+                Expression leftExpression = new QualifiedNameReference(QualifiedName.of(column));
+                Expression rightExpression = new QualifiedNameReference(QualifiedName.of(column));
 
                 ExpressionAnalysis leftExpressionAnalysis = analyzeExpression(leftExpression, left, context);
                 ExpressionAnalysis rightExpressionAnalysis = analyzeExpression(rightExpression, right, context);
@@ -900,10 +899,7 @@ public class TupleAnalyzer
                 SingleColumn column = (SingleColumn) item;
 
                 Optional<String> alias = column.getAlias();
-                if (!alias.isPresent() && column.getExpression() instanceof DeReferenceExpression) {
-                    alias = Optional.of(((DeReferenceExpression) column.getExpression()).getFieldName());
-                }
-                else if (!alias.isPresent() && column.getExpression() instanceof QualifiedNameReference) {
+                if (!alias.isPresent() && column.getExpression() instanceof QualifiedNameReference) {
                     alias = Optional.of(((QualifiedNameReference) column.getExpression()).getName().getSuffix());
                 }
 

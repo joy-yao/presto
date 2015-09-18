@@ -316,30 +316,13 @@ public class ExpressionAnalyzer
 
                     return field.getType();
                 }
-                // No match
             }
 
-            // If node is not qualifiedName, it must has a base.
             Expression base = node.getBase();
             Type baseType;
 
             // We have a ancestor that is not a DeReference.
-            if (base instanceof DeReferenceExpression) {
-                baseType = visitDeReferenceExpression((DeReferenceExpression) base, context);
-            }
-            else if (base instanceof FunctionCall) {
-                baseType = visitFunctionCall((FunctionCall) base, context);
-            }
-            else if (base instanceof SubscriptExpression) {
-                baseType = visitSubscriptExpression((SubscriptExpression) base, context);
-            }
-            else if (base instanceof QualifiedNameReference) {
-                baseType = visitQualifiedNameReference((QualifiedNameReference) base, context);
-            }
-            else {
-                throw new RuntimeException(String.format("Unsupported base expression %s for DeReferenceExpression ", base));
-            }
-
+            baseType = base.accept(this, context);
             RowType rowType = checkType(baseType, RowType.class, "field.getType()");
 
             Type rowFieldType = null;

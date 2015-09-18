@@ -196,7 +196,6 @@ class TranslationMap
             public Expression rewriteQualifiedNameReference(QualifiedNameReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
                 QualifiedName name = node.getName();
-
                 Integer fieldIndex = resolvedNames.get(name);
                 Preconditions.checkState(fieldIndex != null, "No field mapping for name '%s'", name);
 
@@ -204,11 +203,6 @@ class TranslationMap
                 Preconditions.checkState(symbol != null, "No symbol mapping for name '%s' (%s)", name, fieldIndex);
 
                 Expression rewrittenExpression = new QualifiedNameReference(symbol.toQualifiedName());
-
-                if (analysis.isRowFieldReference(node)) {
-                    QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getName().getSuffix()));
-                    rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenExpression));
-                }
 
                 // cast expression if coercion is registered
                 Type coercion = analysis.getCoercion(node);
@@ -225,18 +219,7 @@ class TranslationMap
                 Expression rewrittenExpression;
                 if (analysis.isRowFieldReference(node)) {
                     // Any Row field reference DeReference has a base.
-                    Expression baseExpression = node.getBase();
-                    Expression rewrittenBaseExpression;
-                    if (baseExpression instanceof DeReferenceExpression) {
-                        rewrittenBaseExpression = rewriteDeReferenceExpression((DeReferenceExpression) baseExpression, context, treeRewriter);
-                    }
-                    else if (baseExpression instanceof QualifiedNameReference) {
-                        rewrittenBaseExpression = rewriteQualifiedNameReference((QualifiedNameReference) baseExpression, context, treeRewriter);
-                    }
-                    else {
-                        rewrittenBaseExpression = rewriteExpression(baseExpression, context, treeRewriter);
-                    }
-
+                    Expression rewrittenBaseExpression = rewrite(node.getBase());
                     QualifiedName mangledName = QualifiedName.of(mangleFieldReference(node.getFieldName()));
                     rewrittenExpression = new FunctionCall(mangledName, ImmutableList.of(rewrittenBaseExpression));
                 }

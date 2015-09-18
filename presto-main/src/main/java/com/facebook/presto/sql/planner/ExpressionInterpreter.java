@@ -160,11 +160,11 @@ public class ExpressionInterpreter
         // verify expression is constant
         expression.accept(new DefaultTraversalVisitor<Void, Void>()
         {
-            @Override
-            protected Void visitDeReferenceExpression(DeReferenceExpression node, Void context)
-            {
-                throw new SemanticException(EXPRESSION_NOT_CONSTANT, expression, "Constant expression cannot contain column references");
-            }
+//            @Override
+//            protected Void visitDeReferenceExpression(DeReferenceExpression node, Void context)
+//            {
+//                throw new SemanticException(EXPRESSION_NOT_CONSTANT, expression, "Constant expression cannot contain column references");
+//            }
 
             @Override
             protected Void visitQualifiedNameReference(QualifiedNameReference node, Void context)
@@ -312,7 +312,7 @@ public class ExpressionInterpreter
         @Override
         protected Object visitQualifiedNameReference(QualifiedNameReference node, Object context)
         {
-            if (node.getName().getParts().size() > 1) {
+            if (node.getName().getPrefix().isPresent()) {
                 // not a symbol
                 return node;
             }

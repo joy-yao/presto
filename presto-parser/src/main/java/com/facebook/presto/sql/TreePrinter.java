@@ -52,10 +52,10 @@ public class TreePrinter
 {
     private static final String INDENT = "   ";
 
-    private final IdentityHashMap<DeReferenceExpression, QualifiedName> resolvedNameReferences;
+    private final IdentityHashMap<Expression, QualifiedName> resolvedNameReferences;
     private final PrintStream out;
 
-    public TreePrinter(IdentityHashMap<DeReferenceExpression, QualifiedName> resolvedNameReferences, PrintStream out)
+    public TreePrinter(IdentityHashMap<Expression, QualifiedName> resolvedNameReferences, PrintStream out)
     {
         this.resolvedNameReferences = new IdentityHashMap<>(resolvedNameReferences);
         this.out = out;

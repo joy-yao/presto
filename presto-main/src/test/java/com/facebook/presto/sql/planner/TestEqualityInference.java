@@ -18,7 +18,6 @@ import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.QualifiedName;
 import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -360,9 +359,9 @@ public class TestEqualityInference
         return new ComparisonExpression(EQUAL, expression1, expression2);
     }
 
-    private static Expression nameReference(String symbol)
+    private static QualifiedNameReference nameReference(String symbol)
     {
-        return new QualifiedNameReference(new QualifiedName(symbol));
+        return new QualifiedNameReference(new Symbol(symbol).toQualifiedName());
     }
 
     private static LongLiteral number(long number)

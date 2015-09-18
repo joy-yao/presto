@@ -26,13 +26,14 @@ public class DeReferenceExpression
 
     private QualifiedName qualifiedName;
     private boolean isQualifiedName;
-    private boolean qualifiedNameCalculated;
 
     public DeReferenceExpression(Expression base, String fieldName)
     {
-        this.base = base;
+        checkArgument(base != null, "base is null");
         checkArgument(fieldName != null, "fieldName is null");
+        this.base = base;
         this.fieldName = fieldName.toLowerCase();
+        calculateQualifiedName();
     }
 
     @Override
@@ -58,17 +59,11 @@ public class DeReferenceExpression
 
     public boolean isQualifiedName()
     {
-        if (!qualifiedNameCalculated) {
-            calculateQualifiedName();
-        }
         return isQualifiedName;
     }
 
     public QualifiedName getQualifiedName()
     {
-        if (!qualifiedNameCalculated) {
-            calculateQualifiedName();
-        }
         checkState(isQualifiedName, "This DeReferenceExpression is not a qualifiedName");
         return qualifiedName;
     }
@@ -86,7 +81,6 @@ public class DeReferenceExpression
             isQualifiedName = true;
             qualifiedName = QualifiedName.of(((QualifiedNameReference) base).getName(), fieldName);
         }
-        qualifiedNameCalculated = true;
     }
 
     @Override

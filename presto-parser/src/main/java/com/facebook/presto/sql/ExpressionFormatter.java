@@ -232,22 +232,7 @@ public final class ExpressionFormatter
         protected String visitDeReferenceExpression(DeReferenceExpression node, Boolean unmangleNames)
         {
             Expression base = node.getBase();
-            String baseString;
-            if (base instanceof DeReferenceExpression) {
-                baseString = visitDeReferenceExpression((DeReferenceExpression) base, unmangleNames);
-            }
-            else if (base instanceof FunctionCall) {
-                baseString = visitFunctionCall((FunctionCall) base, unmangleNames);
-            }
-            else if (base instanceof SubscriptExpression) {
-                baseString = visitSubscriptExpression((SubscriptExpression) base, unmangleNames);
-            }
-            else if (base instanceof QualifiedNameReference) {
-                baseString = visitQualifiedNameReference((QualifiedNameReference) base, unmangleNames);
-            }
-            else {
-                throw new RuntimeException(String.format("Unsupported base expression %s for DeReferenceExpression ", base));
-            }
+            String baseString = base.accept(this, unmangleNames);
             return baseString + "." + formatIdentifier(node.getFieldName());
         }
 
