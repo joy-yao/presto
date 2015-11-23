@@ -381,11 +381,23 @@ public class LocalQueryRunner
     @Override
     public MaterializedResult execute(@Language("SQL") String sql)
     {
-        return execute(defaultSession, sql);
+        return execute(defaultSession, sql, false);
     }
 
     @Override
     public MaterializedResult execute(Session session, @Language("SQL") String sql)
+    {
+        return execute(session, sql, false);
+    }
+
+    @Override
+    public MaterializedResult execute(@Language("SQL") String sql, boolean refreshMV)
+    {
+        return execute(defaultSession, sql, refreshMV);
+    }
+
+    @Override
+    public MaterializedResult execute(Session session, @Language("SQL") String sql, boolean refreshMV)
     {
         lock.readLock().lock();
         try {

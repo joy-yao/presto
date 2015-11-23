@@ -278,9 +278,21 @@ public class DistributedQueryRunner
     @Override
     public MaterializedResult execute(@Language("SQL") String sql)
     {
+        return execute(sql, false);
+    }
+
+    @Override
+    public MaterializedResult execute(Session session, @Language("SQL") String sql)
+    {
+        return execute(session, sql, false);
+    }
+
+    @Override
+    public MaterializedResult execute(@Language("SQL") String sql, boolean refreshMV)
+    {
         lock.readLock().lock();
         try {
-            return prestoClient.execute(sql);
+            return prestoClient.execute(sql, refreshMV);
         }
         finally {
             lock.readLock().unlock();
@@ -288,11 +300,11 @@ public class DistributedQueryRunner
     }
 
     @Override
-    public MaterializedResult execute(Session session, @Language("SQL") String sql)
+    public MaterializedResult execute(Session session, @Language("SQL") String sql, boolean refreshMV)
     {
         lock.readLock().lock();
         try {
-            return prestoClient.execute(session, sql);
+            return prestoClient.execute(session, sql, refreshMV);
         }
         finally {
             lock.readLock().unlock();

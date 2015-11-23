@@ -42,6 +42,10 @@ public interface QueryRunner
 
     MaterializedResult execute(Session session, @Language("SQL") String sql);
 
+    MaterializedResult execute(@Language("SQL") String sql, boolean refreshMV);
+
+    MaterializedResult execute(Session session, @Language("SQL") String sql, boolean refreshMV);
+
     List<QualifiedObjectName> listTables(Session session, String catalog, String schema);
 
     boolean tableExists(Session session, String table);

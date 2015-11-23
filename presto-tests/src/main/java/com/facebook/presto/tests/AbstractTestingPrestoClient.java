@@ -74,16 +74,26 @@ public abstract class AbstractTestingPrestoClient<T>
 
     public T execute(@Language("SQL") String sql)
     {
-        return execute(defaultSession, sql);
+        return execute(defaultSession, sql, false);
+    }
+
+    public T execute(@Language("SQL") String sql, boolean refreshMV)
+    {
+        return execute(defaultSession, sql, refreshMV);
     }
 
     public T execute(Session session, @Language("SQL") String sql)
+    {
+        return execute(session, sql, false);
+    }
+
+    public T execute(Session session, @Language("SQL") String sql, boolean refreshMV)
     {
         ResultsSession<T> resultsSession = getResultSession(session);
 
         ClientSession clientSession = session.toClientSession(prestoServer.getBaseUrl(), true, new Duration(2, TimeUnit.MINUTES));
 
-        try (StatementClient client = new StatementClient(httpClient, QUERY_RESULTS_CODEC, clientSession, sql)) {
+        try (StatementClient client = new StatementClient(httpClient, QUERY_RESULTS_CODEC, clientSession, sql, refreshMV)) {
             while (client.isValid()) {
                 QueryResults results = client.current();
 
