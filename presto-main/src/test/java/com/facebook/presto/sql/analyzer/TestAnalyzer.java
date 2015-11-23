@@ -917,7 +917,8 @@ public class TestAnalyzer
                         Optional.of("tpch"),
                         Optional.of("s1"),
                         ImmutableList.of(new ViewColumn("a", BIGINT)),
-                        Optional.of("user")));
+                        Optional.of("user"),
+                        Optional.empty()));
         metadata.createView(SESSION, new QualifiedObjectName("tpch", "s1", "v1"), viewData1, false);
 
         // stale view (different column type)
@@ -927,7 +928,8 @@ public class TestAnalyzer
                         Optional.of("tpch"),
                         Optional.of("s1"),
                         ImmutableList.of(new ViewColumn("a", VARCHAR)),
-                        Optional.of("user")));
+                        Optional.of("user"),
+                        Optional.empty()));
         metadata.createView(SESSION, new QualifiedObjectName("tpch", "s1", "v2"), viewData2, false);
 
         // view referencing table in different schema from itself and session
@@ -937,7 +939,8 @@ public class TestAnalyzer
                         Optional.of("c2"),
                         Optional.of("s2"),
                         ImmutableList.of(new ViewColumn("a", BIGINT)),
-                        Optional.of("owner")));
+                        Optional.of("owner"),
+                        Optional.empty()));
         metadata.createView(SESSION, new QualifiedObjectName("c3", "s3", "v3"), viewData3, false);
 
         this.metadata = metadata;

@@ -92,7 +92,7 @@ public class CreateViewTask
                 .map(field -> new ViewColumn(field.getName().get(), field.getType()))
                 .collect(toImmutableList());
 
-        String data = codec.toJson(new ViewDefinition(sql, session.getCatalog(), session.getSchema(), columns, Optional.of(session.getUser())));
+        String data = codec.toJson(new ViewDefinition(sql, session.getCatalog(), session.getSchema(), columns, Optional.of(session.getUser()), Optional.empty()));
 
         metadata.createView(session, name, data, statement.isReplace());
     }

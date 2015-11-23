@@ -31,6 +31,7 @@ public final class ViewDefinition
     private final Optional<String> schema;
     private final List<ViewColumn> columns;
     private final Optional<String> owner;
+    private final Optional<String> materializedTableName;
 
     @JsonCreator
     public ViewDefinition(
@@ -38,13 +39,15 @@ public final class ViewDefinition
             @JsonProperty("catalog") Optional<String> catalog,
             @JsonProperty("schema") Optional<String> schema,
             @JsonProperty("columns") List<ViewColumn> columns,
-            @JsonProperty("owner") Optional<String> owner)
+            @JsonProperty("owner") Optional<String> owner,
+            @JsonProperty("materializedTableName") Optional<String> materializedTableName)
     {
         this.originalSql = requireNonNull(originalSql, "originalSql is null");
         this.catalog = requireNonNull(catalog, "catalog is null");
         this.schema = requireNonNull(schema, "schema is null");
         this.columns = ImmutableList.copyOf(requireNonNull(columns, "columns is null"));
         this.owner = requireNonNull(owner, "owner is null");
+        this.materializedTableName = requireNonNull(materializedTableName, "materializedTableName is null");
     }
 
     @JsonProperty
@@ -77,6 +80,12 @@ public final class ViewDefinition
         return owner;
     }
 
+    @JsonProperty
+    public Optional<String> getMaterializedTableName()
+    {
+        return materializedTableName;
+    }
+
     @Override
     public String toString()
     {
@@ -86,6 +95,7 @@ public final class ViewDefinition
                 .add("schema", schema.orElse(null))
                 .add("columns", columns)
                 .add("owner", owner)
+                .add("materializedTableName", materializedTableName)
                 .omitNullValues()
                 .toString();
     }
