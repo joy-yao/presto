@@ -984,7 +984,7 @@ public class TestAnalyzer
                         ImmutableList.of(new ViewColumn("a", BIGINT)),
                         Optional.of("user"),
                         Optional.empty()));
-        inSetupTransaction(session -> metadata.createView(session, new QualifiedObjectName("tpch", "s1", "v1"), viewData1, false));
+        inSetupTransaction(session -> metadata.createView(session, new QualifiedObjectName("tpch", "s1", "v1"), viewData1, Optional.empty(), false));
 
         // stale view (different column type)
         String viewData2 = JsonCodec.jsonCodec(ViewDefinition.class).toJson(
@@ -995,7 +995,7 @@ public class TestAnalyzer
                         ImmutableList.of(new ViewColumn("a", VARCHAR)),
                         Optional.of("user"),
                         Optional.empty()));
-        inSetupTransaction(session -> metadata.createView(session, new QualifiedObjectName("tpch", "s1", "v2"), viewData2, false));
+        inSetupTransaction(session -> metadata.createView(session, new QualifiedObjectName("tpch", "s1", "v2"), viewData2, Optional.empty(), false));
 
         // view referencing table in different schema from itself and session
         String viewData3 = JsonCodec.jsonCodec(ViewDefinition.class).toJson(
@@ -1006,7 +1006,7 @@ public class TestAnalyzer
                         ImmutableList.of(new ViewColumn("a", BIGINT)),
                         Optional.of("owner"),
                         Optional.empty()));
-        inSetupTransaction(session -> metadata.createView(session, new QualifiedObjectName("c3", "s3", "v3"), viewData3, false));
+        inSetupTransaction(session -> metadata.createView(session, new QualifiedObjectName("c3", "s3", "v3"), viewData3, Optional.empty(), false));
 
         this.metadata = metadata;
     }

@@ -211,9 +211,9 @@ public class LegacyConnectorMetadata
     }
 
     @Override
-    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, boolean replace)
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, Optional<String> materializedTableName, boolean replace)
     {
-        metadata.createView(session, viewName, viewData, replace);
+        metadata.createView(session, viewName, viewData, materializedTableName, replace);
     }
 
     @Override

@@ -19,6 +19,7 @@ import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -26,11 +27,13 @@ public class ViewResult
 {
     private final SchemaTableName name;
     private final String data;
+    private final String materializedTableName;
 
-    public ViewResult(SchemaTableName name, String data)
+    public ViewResult(SchemaTableName name, String data, String materializedTableName)
     {
         this.name = requireNonNull(name, "name is null");
         this.data = requireNonNull(data, "data is null");
+        this.materializedTableName = materializedTableName;
     }
 
     public SchemaTableName getName()
@@ -43,6 +46,14 @@ public class ViewResult
         return data;
     }
 
+    public Optional<String> getMaterializedTableName()
+    {
+        if (materializedTableName == null) {
+            return Optional.empty();
+        }
+        return Optional.of(materializedTableName);
+    }
+
     public static class Mapper
             implements ResultSetMapper<ViewResult>
     {
@@ -53,7 +64,7 @@ public class ViewResult
             SchemaTableName name = new SchemaTableName(
                     r.getString("schema_name"),
                     r.getString("table_name"));
-            return new ViewResult(name, r.getString("data"));
+            return new ViewResult(name, r.getString("data"), r.getString("materialized_table"));
         }
     }
 }

@@ -152,7 +152,7 @@ public class TestingMetadata
     }
 
     @Override
-    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, boolean replace)
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, Optional<String> materializedTableName, boolean replace)
     {
         if (replace) {
             views.put(viewName, viewData);
@@ -188,7 +188,7 @@ public class TestingMetadata
         ImmutableMap.Builder<SchemaTableName, ConnectorViewDefinition> map = ImmutableMap.builder();
         for (Map.Entry<SchemaTableName, String> entry : views.entrySet()) {
             if (prefix.matches(entry.getKey())) {
-                map.put(entry.getKey(), new ConnectorViewDefinition(entry.getKey(), Optional.empty(), entry.getValue()));
+                map.put(entry.getKey(), new ConnectorViewDefinition(entry.getKey(), Optional.empty(), entry.getValue(), Optional.empty()));
             }
         }
         return map.build();

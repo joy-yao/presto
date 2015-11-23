@@ -669,12 +669,12 @@ public class MetadataManager
     }
 
     @Override
-    public void createView(Session session, QualifiedObjectName viewName, String viewData, boolean replace)
+    public void createView(Session session, QualifiedObjectName viewName, String viewData, Optional<String> materializedTableName, boolean replace)
     {
         ConnectorEntry entry = connectorsByCatalog.get(viewName.getCatalogName());
         checkArgument(entry != null, "Catalog %s does not exist", viewName.getCatalogName());
         ConnectorMetadata metadata = entry.getMetadataForWrite(session);
-        metadata.createView(session.toConnectorSession(entry.getCatalog()), viewName.asSchemaTableName(), viewData, replace);
+        metadata.createView(session.toConnectorSession(entry.getCatalog()), viewName.asSchemaTableName(), viewData, materializedTableName, replace);
     }
 
     @Override

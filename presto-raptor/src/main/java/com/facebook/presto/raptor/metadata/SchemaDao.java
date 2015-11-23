@@ -46,6 +46,7 @@ public interface SchemaDao
             "  schema_name VARCHAR(255) NOT NULL,\n" +
             "  table_name VARCHAR(255) NOT NULL,\n" +
             "  data TEXT NOT NULL,\n" +
+            "  materialized_table VARCHAR(255),\n" +
             "  PRIMARY KEY (schema_name, table_name)\n" +
             ")")
     void createTableViews();
