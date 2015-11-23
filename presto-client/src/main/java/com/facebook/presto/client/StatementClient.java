@@ -84,7 +84,7 @@ public class StatementClient
     private final String timeZoneId;
     private final long requestTimeoutNanos;
 
-    public StatementClient(HttpClient httpClient, JsonCodec<QueryResults> queryResultsCodec, ClientSession session, String query)
+    public StatementClient(HttpClient httpClient, JsonCodec<QueryResults> queryResultsCodec, ClientSession session, String query, boolean refreshMV)
     {
         requireNonNull(httpClient, "httpClient is null");
         requireNonNull(queryResultsCodec, "queryResultsCodec is null");
@@ -98,7 +98,7 @@ public class StatementClient
         this.query = query;
         this.requestTimeoutNanos = session.getClientRequestTimeout().roundTo(NANOSECONDS);
 
-        Request request = buildQueryRequest(session, query);
+        Request request = buildQueryRequest(session, query, refreshMV);
         JsonResponse<QueryResults> response = httpClient.execute(request, responseHandler);
 
         if (response.getStatusCode() != HttpStatus.OK.code() || !response.hasValue()) {
@@ -108,11 +108,21 @@ public class StatementClient
         processResponse(response);
     }
 
-    private static Request buildQueryRequest(ClientSession session, String query)
+    public StatementClient(HttpClient httpClient, JsonCodec<QueryResults> queryResultsCodec, ClientSession session, String query)
     {
-        Request.Builder builder = preparePost()
-                .setUri(uriBuilderFrom(session.getServer()).replacePath("/v1/statement").build())
-                .setBodyGenerator(createStaticBodyGenerator(query, UTF_8));
+        this(httpClient, queryResultsCodec, session, query, false);
+    }
+
+    private static Request buildQueryRequest(ClientSession session, String query, boolean refreshMV)
+    {
+        Request.Builder builder = preparePost();
+        if (refreshMV) {
+            builder.setUri(uriBuilderFrom(session.getServer()).replacePath("v1/statement/refreshMV/" + query).build());
+        }
+        else {
+            builder.setUri(uriBuilderFrom(session.getServer()).replacePath("v1/statement").build());
+            builder.setBodyGenerator(createStaticBodyGenerator(query, UTF_8));
+        }
 
         if (session.getUser() != null) {
             builder.setHeader(PrestoHeaders.PRESTO_USER, session.getUser());
