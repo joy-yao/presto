@@ -163,7 +163,8 @@ public class StatementResource
 
         Session session = createSessionForRequest(servletRequest, accessControl, sessionPropertyManager, queryIdGenerator.createNextQueryId());
 
-        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> { });
+        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> {
+        });
         Query query = new Query(session, statement, queryManager, exchangeClient);
         queries.put(query.getQueryId(), query);
 
@@ -273,19 +274,28 @@ public class StatementResource
         public Query(Session session,
                 String query,
                 QueryManager queryManager,
-                ExchangeClient exchangeClient)
+                ExchangeClient exchangeClient,
+                QueryId queryId)
         {
             requireNonNull(session, "session is null");
             requireNonNull(query, "query is null");
             requireNonNull(queryManager, "queryManager is null");
             requireNonNull(exchangeClient, "exchangeClient is null");
 
+            QueryInfo queryInfo = queryManager.createQuery(session, query, queryId);
+
             this.session = session;
             this.queryManager = queryManager;
-
-            QueryInfo queryInfo = queryManager.createQuery(session, query);
-            queryId = queryInfo.getQueryId();
+            this.queryId = queryInfo.getQueryId();
             this.exchangeClient = exchangeClient;
+        }
+
+        public Query(Session session,
+                String query,
+                QueryManager queryManager,
+                ExchangeClient exchangeClient)
+        {
+            this(session, query, queryManager, exchangeClient, session.getQueryId());
         }
 
         public void cancel()
@@ -694,14 +704,14 @@ public class StatementResource
                     failure);
         }
 
-        private static class RowIterable
+        public static class RowIterable
                 implements Iterable<List<Object>>
         {
             private final ConnectorSession session;
             private final List<Type> types;
             private final Page page;
 
-            private RowIterable(ConnectorSession session, List<Type> types, Page page)
+            public RowIterable(ConnectorSession session, List<Type> types, Page page)
             {
                 this.session = session;
                 this.types = ImmutableList.copyOf(requireNonNull(types, "types is null"));

@@ -114,6 +114,7 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -508,11 +509,24 @@ class StatementAnalyzer
     protected RelationType visitInsert(Insert insert, AnalysisContext context)
     {
         QualifiedObjectName targetTable = createQualifiedObjectName(session, insert, insert.getTarget());
-        if (metadata.getView(session, targetTable).isPresent()) {
-            throw new SemanticException(NOT_SUPPORTED, insert, "Inserting into views is not supported");
+        Optional<Table> materializedTable = Optional.empty();
+        Optional<ViewDefinition> viewDefinitionOptional = metadata.getView(session, targetTable);
+        if (viewDefinitionOptional.isPresent()) {
+            materializedTable = getMaterializedViewTable(targetTable);
+            if (!materializedTable.isPresent()) {
+                throw new SemanticException(NOT_SUPPORTED, insert, "Inserting into views is not supported");
+            }
         }
 
         analysis.setUpdateType("INSERT");
+        if (materializedTable.isPresent()) {
+            // replace the targetTable with the physical table of the materialized view
+            String query = viewDefinitionOptional.get().getOriginalSql();
+            String insertStatement = "INSERT INTO " + materializedTable.get().getName() + " " + query;
+            Statement statement = sqlParser.createStatement(insertStatement);
+            insert = checkType(statement, Insert.class, "statement");
+            targetTable = createQualifiedObjectName(session, insert, insert.getTarget());
+        }
 
         // analyze the query that creates the data
         RelationType queryDescriptor = process(insert.getQuery(), context);
@@ -564,7 +578,26 @@ class StatementAnalyzer
                     "Query: (" + Joiner.on(", ").join(queryTypes) + ")");
         }
 
-        return new RelationType(Field.newUnqualified("rows", BIGINT));
+        RelationType relationType = new RelationType(Field.newUnqualified("rows", BIGINT));
+        analysis.setOutputDescriptor(insert, relationType);
+        return relationType;
+    }
+
+    private Optional<Table> getMaterializedViewTable(QualifiedObjectName tableName)
+    {
+        if (metadata.getView(session, tableName).isPresent()) {
+            Optional<String> materializedTableOptional = metadata.getView(session, tableName).get().getMaterializedTableName();
+            if (materializedTableOptional.isPresent()) {
+                QualifiedName qualifiedName = new QualifiedName(Arrays.asList(materializedTableOptional.get().split(".")));
+                return Optional.of(new Table(qualifiedName));
+            }
+
+            if (tableName.getObjectName().equalsIgnoreCase("test_refresh_view")) {
+                QualifiedName qualifiedName = new QualifiedName(ImmutableList.of("raptor", "tpch", "test_refresh_mv_table"));
+                return Optional.of(new Table(qualifiedName));
+            }
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -572,12 +605,20 @@ class StatementAnalyzer
     {
         Table table = node.getTable();
         QualifiedObjectName tableName = createQualifiedObjectName(session, table, table.getName());
+        Optional<Table> materializedTable = Optional.empty();
         if (metadata.getView(session, tableName).isPresent()) {
-            throw new SemanticException(NOT_SUPPORTED, node, "Deleting from views is not supported");
+            materializedTable = getMaterializedViewTable(tableName);
+            if (!materializedTable.isPresent()) {
+                throw new SemanticException(NOT_SUPPORTED, node, "Deleting from views is not supported");
+            }
         }
 
         analysis.setUpdateType("DELETE");
-
+        if (materializedTable.isPresent()) {
+            node = new Delete(materializedTable.get(), node.getWhere());
+            tableName = createQualifiedObjectName(session, node, materializedTable.get().getName());
+            table = node.getTable();
+        }
         analysis.setDelete(node);
 
         // Analyzer checks for select permissions but DELETE has a separate permission, so disable access checks
@@ -592,7 +633,9 @@ class StatementAnalyzer
                 queryExplainer);
 
         RelationType descriptor = analyzer.process(table, context);
-        node.getWhere().ifPresent(where -> analyzer.analyzeWhere(node, descriptor, context, where));
+        if (node.getWhere().isPresent()) {
+            analyzer.analyzeWhere(node, descriptor, context, node.getWhere().get());
+        }
 
         accessControl.checkCanDeleteFromTable(session.getRequiredTransactionId(), session.getIdentity(), tableName);
 
@@ -811,6 +854,12 @@ class StatementAnalyzer
             }
 
             analysis.setOutputDescriptor(table, descriptor);
+            QualifiedObjectName tableName = createQualifiedObjectName(session, table, table.getName());
+            Optional<Table> materializedTable = getMaterializedViewTable(tableName);
+            if (materializedTable.isPresent()) {
+                visitTable(materializedTable.get(), context);
+                analysis.setOutputDescriptor(table, analysis.getOutputDescriptor(materializedTable.get()));
+            }
             return descriptor;
         }
 

@@ -23,6 +23,8 @@ import com.facebook.presto.execution.DataDefinitionTask;
 import com.facebook.presto.execution.DropTableTask;
 import com.facebook.presto.execution.DropViewTask;
 import com.facebook.presto.execution.ForQueryExecution;
+import com.facebook.presto.execution.MaterializedViewRefresher;
+import com.facebook.presto.execution.MaterializedViewRefresherInterface;
 import com.facebook.presto.execution.NodeTaskMap;
 import com.facebook.presto.execution.QueryExecution;
 import com.facebook.presto.execution.QueryExecutionMBean;
@@ -123,6 +125,7 @@ public class CoordinatorModule
         jaxrsBinder(binder).bind(StageResource.class);
         binder.bind(QueryIdGenerator.class).in(Scopes.SINGLETON);
         binder.bind(QueryManager.class).to(SqlQueryManager.class).in(Scopes.SINGLETON);
+        binder.bind(MaterializedViewRefresherInterface.class).to(MaterializedViewRefresher.class).in(Scopes.SINGLETON);
         binder.bind(QueryQueueManager.class).to(SqlQueryQueueManager.class).in(Scopes.SINGLETON);
         newExporter(binder).export(QueryManager.class).withGeneratedName();
         configBinder(binder).bindConfig(QueryManagerConfig.class);

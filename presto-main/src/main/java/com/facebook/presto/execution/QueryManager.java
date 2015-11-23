@@ -14,6 +14,7 @@
 package com.facebook.presto.execution;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.spi.ConnectorSession;
 import io.airlift.units.Duration;
 
 import java.util.List;
@@ -33,6 +34,10 @@ public interface QueryManager
     void recordHeartbeat(QueryId queryId);
 
     QueryInfo createQuery(Session session, String query);
+
+    QueryInfo createQuery(Session session, String query, QueryId queryId);
+
+    void refreshMaterializedView(String materializedView, ConnectorSession session) throws Exception;
 
     void cancelQuery(QueryId queryId);
 

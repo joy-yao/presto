@@ -113,18 +113,25 @@ public class CallTask
         }
 
         // get argument values
-        Object[] values = new Object[procedure.getArguments().size()];
-        for (Entry<String, CallArgument> entry : names.entrySet()) {
-            CallArgument callArgument = entry.getValue();
-            int index = positions.get(entry.getKey());
-            Argument argument = procedure.getArguments().get(index);
+        Object[] values;
+        if (procedureName.getObjectName().equals("refresh_materialized_view")) {
+            values = new Object[procedure.getArguments().size() + 1];
+            values[0] = names.get("materializedView").getValue().toString();
+            values[1] = session;
+        }
+        else {
+            values = new Object[procedure.getArguments().size()];
+            for (Entry<String, CallArgument> entry : names.entrySet()) {
+                CallArgument callArgument = entry.getValue();
+                int index = positions.get(entry.getKey());
+                Argument argument = procedure.getArguments().get(index);
 
-            Expression expression = callArgument.getValue();
-            Type type = argument.getType();
+                Expression expression = callArgument.getValue();
+                Type type = argument.getType();
 
-            Object value = evaluateConstantExpression(expression, type, metadata, session);
-
-            values[index] = toTypeObjectValue(session, type, value);
+                Object value = evaluateConstantExpression(expression, type, metadata, session);
+                values[index] = toTypeObjectValue(session, type, value);
+            }
         }
 
         // validate arguments

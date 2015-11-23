@@ -18,13 +18,24 @@ import com.facebook.presto.SystemSessionProperties;
 import com.facebook.presto.event.query.QueryMonitor;
 import com.facebook.presto.execution.QueryExecution.QueryExecutionFactory;
 import com.facebook.presto.memory.ClusterMemoryManager;
+import com.facebook.presto.metadata.Metadata;
+import com.facebook.presto.operator.ExchangeClient;
+import com.facebook.presto.operator.ExchangeClientSupplier;
+import com.facebook.presto.server.StatementResource;
+import com.facebook.presto.spi.ConnectorSession;
+import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.PrestoException;
+import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.parser.ParsingException;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.transaction.TransactionManager;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import io.airlift.concurrent.ThreadPoolExecutorMBean;
 import io.airlift.log.Logger;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.joda.time.DateTime;
 import org.weakref.jmx.Flatten;
@@ -61,6 +72,7 @@ import static com.facebook.presto.spi.StandardErrorCode.USER_CANCELED;
 import static com.facebook.presto.util.ImmutableCollectors.toImmutableList;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.concurrent.Threads.threadsNamed;
+import static io.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
@@ -76,6 +88,10 @@ public class SqlQueryManager
     private final ThreadPoolExecutorMBean queryExecutorMBean;
     private final QueryQueueManager queueManager;
     private final ClusterMemoryManager memoryManager;
+
+    private final Metadata metadata;
+    private final ExchangeClientSupplier exchangeClientSupplier;
+    private final QueryIdGenerator queryIdGenerator;
 
     private final int maxQueryHistory;
     private final Duration maxQueryAge;
@@ -106,7 +122,10 @@ public class SqlQueryManager
             ClusterMemoryManager memoryManager,
             LocationFactory locationFactory,
             TransactionManager transactionManager,
-            Map<Class<? extends Statement>, QueryExecutionFactory<?>> executionFactories)
+            Map<Class<? extends Statement>, QueryExecutionFactory<?>> executionFactories,
+            Metadata metadata,
+            ExchangeClientSupplier exchangeClientSupplier,
+            QueryIdGenerator queryIdGenerator)
     {
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
 
@@ -123,6 +142,9 @@ public class SqlQueryManager
         this.locationFactory = requireNonNull(locationFactory, "locationFactory is null");
 
         this.transactionManager = requireNonNull(transactionManager, "transactionManager is null");
+        this.metadata = requireNonNull(metadata);
+        this.exchangeClientSupplier = requireNonNull(exchangeClientSupplier, "exchangeClientSupplier is null");
+        this.queryIdGenerator = requireNonNull(queryIdGenerator);
 
         this.maxQueryAge = config.getMaxQueryAge();
         this.maxQueryHistory = config.getMaxQueryHistory();
@@ -266,12 +288,10 @@ public class SqlQueryManager
     }
 
     @Override
-    public QueryInfo createQuery(Session session, String query)
+    public QueryInfo createQuery(Session session, String query, QueryId queryId)
     {
         requireNonNull(query, "query is null");
         checkArgument(!query.isEmpty(), "query must not be empty string");
-
-        QueryId queryId = session.getQueryId();
 
         QueryExecution queryExecution;
         try {
@@ -317,6 +337,144 @@ public class SqlQueryManager
         }
 
         return queryExecution.getQueryInfo();
+    }
+
+    @Override
+    public QueryInfo createQuery(Session session, String query)
+    {
+        return createQuery(session, query, session.getQueryId());
+    }
+
+    @Override
+    public void refreshMaterializedView(String materializedView, ConnectorSession connectorSession)
+            throws Exception
+    {
+        requireNonNull(materializedView, "materializedView is null");
+        checkArgument(!materializedView.trim().isEmpty(), "materializedView must not be empty string");
+
+        Session session = Session.builder(metadata.getSessionPropertyManager())
+                .setQueryId(new QueryId(connectorSession.getQueryId()))
+                .setIdentity(connectorSession.getIdentity())
+                .setSource("system")
+                .setCatalog("") // default catalog is not be used
+                .setSchema("") // default schema is not be used
+                .setTimeZoneKey(connectorSession.getTimeZoneKey())
+                .setLocale(connectorSession.getLocale())
+                .setStartTime(connectorSession.getStartTime())
+                .build();
+
+        QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
+        QueryInfo queryInfo = createQuery(session, "DELETE FROM " + materializedView, deleteQueryId);
+        queryInfo = waitForQueryToFinish(queryInfo, deleteQueryId, session);
+        if (queryInfo.getState() != QueryState.FINISHED) {
+            throw new Exception("Delete from materialized view failed");
+        }
+        queryInfo = createQuery(session, "INSERT INTO " + materializedView + " VALUES (1)");
+        queryInfo = waitForQueryToFinish(queryInfo, session.getQueryId(), session);
+        if (queryInfo.getState() != QueryState.FINISHED) {
+            throw new Exception("Insert into materialized view failed");
+        }
+    }
+
+    private QueryInfo waitForQueryToFinish(QueryInfo queryInfo, QueryId queryId, Session session)
+            throws InterruptedException
+    {
+        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> {
+        });
+        // wait for it to start
+        while (!isQueryStarted(queryInfo)) {
+            recordHeartbeat(queryId);
+            waitForStateChange(queryId, queryInfo.getState(), new Duration(1, TimeUnit.SECONDS));
+            queryInfo = getQueryInfo(queryId);
+        }
+
+        while (!queryInfo.getState().isDone()) {
+            recordHeartbeat(queryId);
+            Iterable<List<Object>> data = getData(queryInfo, exchangeClient, session); // ignore data -- we don't need it for delete or insert.
+            waitForStateChange(queryId, queryInfo.getState(), new Duration(1, TimeUnit.SECONDS));
+            queryInfo = getQueryInfo(queryId);
+        }
+        return queryInfo;
+    }
+
+    private static boolean isQueryStarted(QueryInfo queryInfo)
+    {
+        QueryState state = queryInfo.getState();
+        return state != QueryState.QUEUED && queryInfo.getState() != QueryState.PLANNING && queryInfo.getState() != QueryState.STARTING;
+    }
+
+    private Iterable<List<Object>> getData(QueryInfo queryInfo, ExchangeClient exchangeClient, Session session)
+            throws InterruptedException
+    {
+        List<Type> types = queryInfo.getOutputStage().getTypes();
+
+        updateExchangeClient(queryInfo.getOutputStage(), exchangeClient);
+
+        ImmutableList.Builder<StatementResource.Query.RowIterable> pages = ImmutableList.builder();
+        // wait up to max wait for data to arrive; then try to return at least DESIRED_RESULT_BYTES
+        long bytes = 0;
+        while (bytes < DESIRED_RESULT_BYTES) {
+            Page page = exchangeClient.getNextPage(new Duration(10, TimeUnit.MILLISECONDS));
+            if (page == null) {
+                break;
+            }
+            bytes += page.getSizeInBytes();
+            pages.add(new StatementResource.Query.RowIterable(session.toConnectorSession(), types, page));
+        }
+
+        if (bytes == 0) {
+            return null;
+        }
+
+        return Iterables.concat(pages.build());
+    }
+
+    private static final long DESIRED_RESULT_BYTES = new DataSize(1, DataSize.Unit.MEGABYTE).toBytes();
+
+    private synchronized void updateExchangeClient(StageInfo outputStage, ExchangeClient exchangeClient)
+    {
+        // add any additional output locations
+        if (!outputStage.getState().isDone()) {
+            for (TaskInfo taskInfo : outputStage.getTasks()) {
+                SharedBufferInfo outputBuffers = taskInfo.getOutputBuffers();
+                List<BufferInfo> buffers = outputBuffers.getBuffers();
+                if (buffers.isEmpty() || outputBuffers.getState().canAddBuffers()) {
+                    // output buffer has not been created yet
+                    continue;
+                }
+                Preconditions.checkState(buffers.size() == 1,
+                        "Expected a single output buffer for task %s, but found %s",
+                        taskInfo.getTaskId(),
+                        buffers);
+
+                TaskId bufferId = Iterables.getOnlyElement(buffers).getBufferId();
+                URI uri = uriBuilderFrom(taskInfo.getSelf()).appendPath("results").appendPath(bufferId.toString()).build();
+                exchangeClient.addLocation(uri);
+            }
+        }
+
+        if (allOutputBuffersCreated(outputStage)) {
+            exchangeClient.noMoreLocations();
+        }
+    }
+
+    private static boolean allOutputBuffersCreated(StageInfo outputStage)
+    {
+        StageState stageState = outputStage.getState();
+
+        // if the stage is already done, then there will be no more buffers
+        if (stageState.isDone()) {
+            return true;
+        }
+
+        // have all stage tasks been scheduled?
+        if (stageState == StageState.PLANNED || stageState == StageState.SCHEDULING) {
+            return false;
+        }
+
+        // have all tasks finished adding buffers
+        return outputStage.getTasks().stream()
+                .allMatch(taskInfo -> !taskInfo.getOutputBuffers().getState().canAddBuffers());
     }
 
     @Override
