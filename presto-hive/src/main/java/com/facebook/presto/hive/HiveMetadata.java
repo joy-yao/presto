@@ -1083,7 +1083,7 @@ public class HiveMetadata
     }
 
     @Override
-    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, boolean replace)
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, Optional<String> materializedTableName, boolean replace)
     {
         if (replace) {
             try {
@@ -1174,7 +1174,8 @@ public class HiveMetadata
                 views.put(schemaTableName, new ConnectorViewDefinition(
                         schemaTableName,
                         Optional.ofNullable(table.get().getOwner()),
-                        decodeViewData(table.get().getViewOriginalText())));
+                        decodeViewData(table.get().getViewOriginalText()),
+                        Optional.empty()));
             }
         }
 

@@ -530,7 +530,7 @@ public class RaptorMetadata
     }
 
     @Override
-    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, boolean replace)
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, Optional<String> materializedTableName, boolean replace)
     {
         String schemaName = viewName.getSchemaName();
         String tableName = viewName.getTableName();
@@ -539,14 +539,14 @@ public class RaptorMetadata
             runTransaction(dbi, (handle, status) -> {
                 MetadataDao dao = handle.attach(MetadataDao.class);
                 dao.dropView(schemaName, tableName);
-                dao.insertView(schemaName, tableName, viewData);
+                dao.insertView(schemaName, tableName, viewData, materializedTableName.isPresent() ? materializedTableName.get() : null);
                 return null;
             });
             return;
         }
 
         try {
-            dao.insertView(schemaName, tableName, viewData);
+            dao.insertView(schemaName, tableName, viewData, materializedTableName.isPresent() ? materializedTableName.get() : null);
         }
         catch (PrestoException e) {
             if (viewExists(session, viewName)) {
@@ -576,7 +576,7 @@ public class RaptorMetadata
     {
         ImmutableMap.Builder<SchemaTableName, ConnectorViewDefinition> map = ImmutableMap.builder();
         for (ViewResult view : dao.getViews(prefix.getSchemaName(), prefix.getTableName())) {
-            map.put(view.getName(), new ConnectorViewDefinition(view.getName(), Optional.empty(), view.getData()));
+            map.put(view.getName(), new ConnectorViewDefinition(view.getName(), Optional.empty(), view.getData(), view.getMaterializedTableName()));
         }
         return map.build();
     }

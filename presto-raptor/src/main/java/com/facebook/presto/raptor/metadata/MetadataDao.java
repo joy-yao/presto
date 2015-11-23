@@ -88,14 +88,14 @@ public interface MetadataDao
             "ORDER BY c.sort_ordinal_position")
     List<TableColumn> listSortColumns(@Bind("tableId") long tableId);
 
-    @SqlQuery("SELECT schema_name, table_name, data\n" +
+    @SqlQuery("SELECT schema_name, table_name, data, materialized_table \n" +
             "FROM views\n" +
             "WHERE (schema_name = :schemaName OR :schemaName IS NULL)")
     @Mapper(SchemaTableNameMapper.class)
     List<SchemaTableName> listViews(
             @Bind("schemaName") String schemaName);
 
-    @SqlQuery("SELECT schema_name, table_name, data\n" +
+    @SqlQuery("SELECT schema_name, table_name, data, materialized_table \n" +
             "FROM views\n" +
             "WHERE (schema_name = :schemaName OR :schemaName IS NULL)\n" +
             "  AND (table_name = :tableName OR :tableName IS NULL)\n" +
@@ -140,12 +140,13 @@ public interface MetadataDao
             @Bind("columnId") long columnId,
             @Bind("target") String target);
 
-    @SqlUpdate("INSERT INTO views (schema_name, table_name, data)\n" +
-            "VALUES (:schemaName, :tableName, :data)")
+    @SqlUpdate("INSERT INTO views (schema_name, table_name, data, materialized_table)\n" +
+            "VALUES (:schemaName, :tableName, :data, :materializedTableName)")
     void insertView(
             @Bind("schemaName") String schemaName,
             @Bind("tableName") String tableName,
-            @Bind("data") String data);
+            @Bind("data") String data,
+            @Bind("materializedTableName") String materializedTableName);
 
     @SqlUpdate("DELETE FROM tables WHERE table_id = :tableId")
     int dropTable(@Bind("tableId") long tableId);

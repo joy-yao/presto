@@ -1492,7 +1492,7 @@ public abstract class AbstractTestHiveClient
     {
         String viewData = "test data";
 
-        metadata.createView(newSession(), viewName, viewData, replace);
+        metadata.createView(newSession(), viewName, viewData, Optional.empty(), replace);
 
         Map<SchemaTableName, ConnectorViewDefinition> views = metadata.getViews(newSession(), viewName.toSchemaTablePrefix());
         assertEquals(views.size(), 1);
