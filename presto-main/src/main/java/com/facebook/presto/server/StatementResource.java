@@ -167,6 +167,57 @@ public class StatementResource
         return getQueryResults(query, Optional.empty(), uriInfo, new Duration(1, MILLISECONDS));
     }
 
+    @POST
+    @Path("/refreshMV/{materializedView}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response refreshMaterializedView(
+            @PathParam("materializedView") String materializedView,
+            String extraInfo,
+            @Context HttpServletRequest servletRequest,
+            @Context UriInfo uriInfo)
+            throws InterruptedException
+    {
+        assertRequest(!isNullOrEmpty(materializedView), "materializedView is empty");
+        Session session = createSessionForRequest(servletRequest, accessControl, sessionPropertyManager, queryIdGenerator.createNextQueryId());
+
+        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> { });
+
+        Query deleteQuery = new Query(session, "DELETE FROM " + materializedView, queryManager, exchangeClient, queryIdGenerator.createNextQueryId());
+
+        queries.put(deleteQuery.getQueryId(), deleteQuery);
+        QueryResults queryResults = deleteQuery.getNextResults(uriInfo, new Duration(1, SECONDS));
+
+        URI nextUri = queryResults.getNextUri();
+         while (nextUri != null) {
+            queryResults = deleteQuery.getNextResults(uriInfo, new Duration(1, SECONDS));
+            nextUri = queryResults.getNextUri();
+        }
+
+        exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> { });
+        // FIXME: remove this terrible hack to work around parser!
+        Query insertQuery = new Query(session, "INSERT INTO " + materializedView + " VALUES (1)", queryManager, exchangeClient, queryIdGenerator.createNextQueryId());
+        queries.put(insertQuery.getQueryId(), insertQuery);
+        queryResults = insertQuery.getNextResults(uriInfo, new Duration(1, SECONDS));
+
+        nextUri = queryResults.getNextUri();
+        while (nextUri != null) {
+            queryResults = insertQuery.getNextResults(uriInfo, new Duration(1, SECONDS));
+            nextUri = queryResults.getNextUri();
+        }
+
+        ResponseBuilder response = Response.ok(queryResults);
+
+        // add set session properties
+        insertQuery.getSetSessionProperties().entrySet().stream()
+                .forEach(entry -> response.header(PRESTO_SET_SESSION, entry.getKey() + '=' + entry.getValue()));
+
+        // add clear session properties
+        insertQuery.getResetSessionProperties().stream()
+                .forEach(name -> response.header(PRESTO_CLEAR_SESSION, name));
+
+        return response.build();
+    }
+
     @GET
     @Path("{queryId}/{token}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -255,19 +306,28 @@ public class StatementResource
         public Query(Session session,
                 String query,
                 QueryManager queryManager,
-                ExchangeClient exchangeClient)
+                ExchangeClient exchangeClient,
+                QueryId queryId)
         {
             requireNonNull(session, "session is null");
             requireNonNull(query, "query is null");
             requireNonNull(queryManager, "queryManager is null");
             requireNonNull(exchangeClient, "exchangeClient is null");
 
+            QueryInfo queryInfo = queryManager.createQuery(session, query, queryId);
+
             this.session = session;
             this.queryManager = queryManager;
-
-            QueryInfo queryInfo = queryManager.createQuery(session, query);
-            queryId = queryInfo.getQueryId();
+            this.queryId = queryInfo.getQueryId();
             this.exchangeClient = exchangeClient;
+        }
+
+        public Query(Session session,
+                String query,
+                QueryManager queryManager,
+                ExchangeClient exchangeClient)
+        {
+            this(session, query, queryManager, exchangeClient, session.getQueryId());
         }
 
         public void cancel()
