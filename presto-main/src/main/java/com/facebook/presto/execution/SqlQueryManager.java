@@ -363,17 +363,23 @@ public class SqlQueryManager
                 .setStartTime(connectorSession.getStartTime())
                 .build();
 
+//        TransactionId transactionId = transactionManager.beginTransaction(false);
+//        session = session.withTransactionId(transactionId);
         QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
         QueryInfo queryInfo = createQuery(session, "DELETE FROM " + materializedView, deleteQueryId);
         queryInfo = waitForQueryToFinish(queryInfo, deleteQueryId, session);
         if (queryInfo.getState() != QueryState.FINISHED) {
+//            transactionManager.asyncAbort(transactionId);
             throw new Exception("Delete from materialized view failed");
         }
         queryInfo = createQuery(session, "INSERT INTO " + materializedView + " VALUES (1)");
         queryInfo = waitForQueryToFinish(queryInfo, session.getQueryId(), session);
         if (queryInfo.getState() != QueryState.FINISHED) {
+//            transactionManager.asyncAbort(transactionId);
             throw new Exception("Insert into materialized view failed");
         }
+
+//        transactionManager.asyncCommit(transactionId);
     }
 
     private QueryInfo waitForQueryToFinish(QueryInfo queryInfo, QueryId queryId, Session session)
