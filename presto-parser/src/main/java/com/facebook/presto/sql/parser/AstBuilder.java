@@ -244,7 +244,8 @@ class AstBuilder
                 getLocation(context),
                 getQualifiedName(context.qualifiedName()),
                 (Query) visit(context.query()),
-                context.REPLACE() != null);
+                context.REPLACE() != null,
+                processTableProperties(context.tableProperties()));
     }
 
     @Override

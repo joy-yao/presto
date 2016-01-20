@@ -588,12 +588,7 @@ class StatementAnalyzer
         if (metadata.getView(session, tableName).isPresent()) {
             Optional<String> materializedTableOptional = metadata.getView(session, tableName).get().getMaterializedTableName();
             if (materializedTableOptional.isPresent()) {
-                QualifiedName qualifiedName = new QualifiedName(Arrays.asList(materializedTableOptional.get().split(".")));
-                return Optional.of(new Table(qualifiedName));
-            }
-
-            if (tableName.getObjectName().equalsIgnoreCase("test_refresh_view")) {
-                QualifiedName qualifiedName = new QualifiedName(ImmutableList.of("raptor", "tpch", "test_refresh_mv_table"));
+                QualifiedName qualifiedName = new QualifiedName(Arrays.asList(materializedTableOptional.get().split("\\.")));
                 return Optional.of(new Table(qualifiedName));
             }
         }

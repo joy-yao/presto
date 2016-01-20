@@ -44,7 +44,8 @@ statement
         RENAME COLUMN from=identifier TO to=identifier                 #renameColumn
     | ALTER TABLE tableName=qualifiedName
         ADD COLUMN column=tableElement                                 #addColumn
-    | CREATE (OR REPLACE)? VIEW qualifiedName AS query                 #createView
+    | CREATE (OR REPLACE)? VIEW qualifiedName AS query
+        (WITH tableProperties)?                                        #createView
     | DROP VIEW (IF EXISTS)? qualifiedName                             #dropView
     | CALL qualifiedName '(' (callArgument (',' callArgument)*)? ')'   #call
     | EXPLAIN ('(' explainOption (',' explainOption)* ')')? statement  #explain

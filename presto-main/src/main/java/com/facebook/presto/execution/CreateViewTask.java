@@ -25,7 +25,9 @@ import com.facebook.presto.sql.analyzer.FeaturesConfig;
 import com.facebook.presto.sql.analyzer.QueryExplainer;
 import com.facebook.presto.sql.parser.ParsingException;
 import com.facebook.presto.sql.parser.SqlParser;
+import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.CreateView;
+import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.transaction.TransactionManager;
@@ -96,9 +98,14 @@ public class CreateViewTask
                 .map(field -> new ViewColumn(field.getName().get(), field.getType()))
                 .collect(toImmutableList());
 
-        String data = codec.toJson(new ViewDefinition(sql, session.getCatalog(), session.getSchema(), columns, Optional.of(session.getUser()), Optional.empty()));
+        Optional<String> materializedTableName = Optional.empty();
+        Expression materialized = statement.getProperties().get("materialized");
+        if (BooleanLiteral.TRUE_LITERAL.equals(materialized)) {
+            materializedTableName = Optional.of(name + "_internal_mt");
+        }
 
-        metadata.createView(session, name, data, Optional.empty(), statement.isReplace());
+        String data = codec.toJson(new ViewDefinition(sql, session.getCatalog(), session.getSchema(), columns, Optional.of(session.getUser()), materializedTableName));
+        metadata.createView(session, name, data, materializedTableName, statement.isReplace());
 
         return completedFuture(null);
     }

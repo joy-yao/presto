@@ -13,6 +13,8 @@
  */
 package com.facebook.presto.sql.tree;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -25,22 +27,29 @@ public class CreateView
     private final QualifiedName name;
     private final Query query;
     private final boolean replace;
+    private final Map<String, Expression> properties;
 
     public CreateView(QualifiedName name, Query query, boolean replace)
     {
-        this(Optional.empty(), name, query, replace);
+        this(Optional.empty(), name, query, replace, Collections.<String, Expression>emptyMap());
     }
 
-    public CreateView(NodeLocation location, QualifiedName name, Query query, boolean replace)
+    public CreateView(QualifiedName name, Query query, boolean replace, Map<String, Expression> properties)
     {
-        this(Optional.of(location), name, query, replace);
+        this(Optional.empty(), name, query, replace, properties);
     }
 
-    private CreateView(Optional<NodeLocation> location, QualifiedName name, Query query, boolean replace)
+    public CreateView(NodeLocation location, QualifiedName name, Query query, boolean replace, Map<String, Expression> properties)
+    {
+        this(Optional.of(location), name, query, replace, properties);
+    }
+
+    private CreateView(Optional<NodeLocation> location, QualifiedName name, Query query, boolean replace, Map<String, Expression> properties)
     {
         super(location);
         this.name = requireNonNull(name, "name is null");
         this.query = requireNonNull(query, "query is null");
+        this.properties = requireNonNull(properties, "properties is null");
         this.replace = replace;
     }
 
@@ -59,6 +68,11 @@ public class CreateView
         return replace;
     }
 
+    public Map<String, Expression> getProperties()
+    {
+        return properties;
+    }
+
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
@@ -68,7 +82,7 @@ public class CreateView
     @Override
     public int hashCode()
     {
-        return Objects.hash(name, query, replace);
+        return Objects.hash(name, query, replace, properties);
     }
 
     @Override
@@ -83,7 +97,8 @@ public class CreateView
         CreateView o = (CreateView) obj;
         return Objects.equals(name, o.name)
                 && Objects.equals(query, o.query)
-                && Objects.equals(replace, o.replace);
+                && Objects.equals(replace, o.replace)
+                && Objects.equals(properties, o.properties);
     }
 
     @Override
@@ -93,6 +108,7 @@ public class CreateView
                 .add("name", name)
                 .add("query", query)
                 .add("replace", replace)
+                .add("properties", properties)
                 .toString();
     }
 }

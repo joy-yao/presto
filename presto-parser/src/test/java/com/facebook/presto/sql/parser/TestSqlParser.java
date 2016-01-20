@@ -1047,6 +1047,16 @@ public class TestSqlParser
                 QualifiedName.of("a"),
                 simpleQuery(selectList(new AllColumns()), table(QualifiedName.of("t"))),
                 true));
+
+        ImmutableMap<String, Expression> properties = ImmutableMap.<String, Expression>builder()
+                .put("materialized", new BooleanLiteral("true"))
+                .build();
+
+        assertStatement("CREATE VIEW a AS SELECT * FROM t WITH (materialized=true)", new CreateView(
+                QualifiedName.of("a"),
+                simpleQuery(selectList(new AllColumns()), table(QualifiedName.of("t"))),
+                false,
+                properties));
     }
 
     @Test
