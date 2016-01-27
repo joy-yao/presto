@@ -129,6 +129,6 @@ public class TestShardCompactionDiscovery
 
     private long createTable(String name)
     {
-        return dbi.onDemand(MetadataDao.class).insertTable("test", name, false, null);
+        return dbi.onDemand(MetadataDao.class).insertTable("test", name, false, null, null);
     }
 }

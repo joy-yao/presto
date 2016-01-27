@@ -33,6 +33,7 @@ public interface SchemaDao
             "  temporal_column_id BIGINT,\n" +
             "  compaction_enabled BOOLEAN NOT NULL,\n" +
             "  distribution_id BIGINT,\n" +
+            "  mqt_query TEXT,\n" +
             "  UNIQUE (schema_name, table_name),\n" +
             "  FOREIGN KEY (distribution_id) REFERENCES distributions (distribution_id)\n" +
             ")")

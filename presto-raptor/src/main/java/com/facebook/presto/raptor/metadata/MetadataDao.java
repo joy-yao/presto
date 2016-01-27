@@ -115,14 +115,15 @@ public interface MetadataDao
             @Bind("schemaName") String schemaName,
             @Bind("tableName") String tableName);
 
-    @SqlUpdate("INSERT INTO tables (schema_name, table_name, compaction_enabled, distribution_id)\n" +
-            "VALUES (:schemaName, :tableName, :compactionEnabled, :distributionId)")
+    @SqlUpdate("INSERT INTO tables (schema_name, table_name, compaction_enabled, distribution_id, mqt_query)\n" +
+            "VALUES (:schemaName, :tableName, :compactionEnabled, :distributionId, :mqtQuery)")
     @GetGeneratedKeys
     long insertTable(
             @Bind("schemaName") String schemaName,
             @Bind("tableName") String tableName,
             @Bind("compactionEnabled") boolean compactionEnabled,
-            @Bind("distributionId") Long distributionId);
+            @Bind("distributionId") Long distributionId,
+            @Bind("mqtQuery") String mqtQuery);
 
     @SqlUpdate("INSERT INTO columns (table_id, column_id, column_name, ordinal_position, data_type, sort_ordinal_position, bucket_ordinal_position)\n" +
             "VALUES (:tableId, :columnId, :columnName, :ordinalPosition, :dataType, :sortOrdinalPosition, :bucketOrdinalPosition)")
@@ -189,6 +190,9 @@ public interface MetadataDao
 
     @SqlQuery("SELECT compaction_enabled FROM tables WHERE table_id = :tableId")
     boolean isCompactionEnabled(@Bind("tableId") long tableId);
+
+    @SqlQuery("SELECT mqt_query FROM tables WHERE table_id = :tableId")
+    String getMqtQuery(@Bind("tableId") long tableId);
 
     @SqlQuery("SELECT table_id FROM tables WHERE table_id = :tableId FOR UPDATE")
     Long getLockedTableId(@Bind("tableId") long tableId);
