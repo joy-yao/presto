@@ -88,6 +88,7 @@ public class Analysis
     private Map<String, Expression> createTableProperties = ImmutableMap.of();
     private boolean createTableAsSelectWithData = true;
     private boolean createMaterializedQueryTable = false;
+    private Optional<Expression> materializedQueryTableRefreshPredicate = Optional.empty();
 
     private Optional<Insert> insert = Optional.empty();
 
@@ -119,19 +120,29 @@ public class Analysis
         return createTableAsSelectWithData;
     }
 
-    public boolean isCreateMaterializedQueryTable()
-    {
-        return createMaterializedQueryTable;
-    }
-
     public void setCreateTableAsSelectWithData(boolean createTableAsSelectWithData)
     {
         this.createTableAsSelectWithData = createTableAsSelectWithData;
     }
 
+    public boolean isCreateMaterializedQueryTable()
+    {
+        return createMaterializedQueryTable;
+    }
+
     public void setCreateMaterializedQueryTable(boolean createMaterializedQueryTable)
     {
         this.createMaterializedQueryTable = createMaterializedQueryTable;
+    }
+
+    public Optional<Expression> getMaterializedQueryTableRefreshPredicate()
+    {
+        return materializedQueryTableRefreshPredicate;
+    }
+
+    public void setMaterializedQueryTableRefreshPredicate(Optional<Expression> predicate)
+    {
+        materializedQueryTableRefreshPredicate = predicate;
     }
 
     public void addResolvedNames(Map<Expression, Integer> mappings)

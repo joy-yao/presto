@@ -265,16 +265,14 @@ public class SqlQueryManager
     }
 
     @Override
-    public QueryInfo createQuery(Session session, String query)
+    public QueryInfo createQuery(Session session, String query, Optional<Statement> statementOptional, QueryId queryId)
     {
         requireNonNull(query, "query is null");
         checkArgument(!query.isEmpty(), "query must not be empty string");
 
-        QueryId queryId = session.getQueryId();
-
         QueryExecution queryExecution;
         try {
-            Statement statement = sqlParser.createStatement(query);
+            Statement statement = statementOptional.isPresent() ? statementOptional.get() : sqlParser.createStatement(query);
             QueryExecutionFactory<?> queryExecutionFactory = executionFactories.get(statement.getClass());
             if (queryExecutionFactory == null) {
                 throw new PrestoException(NOT_SUPPORTED, "Unsupported statement type: " + statement.getClass().getSimpleName());
@@ -320,6 +318,12 @@ public class SqlQueryManager
         }
 
         return queryInfo;
+    }
+
+    @Override
+    public QueryInfo createQuery(Session session, String query)
+    {
+        return createQuery(session, query, Optional.empty(), session.getQueryId());
     }
 
     @Override

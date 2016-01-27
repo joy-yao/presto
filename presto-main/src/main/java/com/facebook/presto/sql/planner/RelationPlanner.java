@@ -153,6 +153,11 @@ class RelationPlanner
 
         List<Symbol> nodeOutputSymbols = outputSymbolsBuilder.build();
         PlanNode root = new TableScanNode(idAllocator.getNextId(), handle, nodeOutputSymbols, columns.build(), Optional.empty(), TupleDomain.all(), null);
+        if (analysis.getMaterializedQueryTableRefreshPredicate().isPresent()) {
+            // FIXME: The predicate may contain predicate for many base tables.
+            root = new FilterNode(idAllocator.getNextId(), root, analysis.getMaterializedQueryTableRefreshPredicate().get());
+        }
+
         return new RelationPlan(root, tableType, planOutputSymbols, Optional.ofNullable(sampleWeightSymbol));
     }
 
