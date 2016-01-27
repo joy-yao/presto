@@ -268,12 +268,10 @@ public class SqlQueryManager
     }
 
     @Override
-    public QueryInfo createQuery(Session session, String query)
+    public QueryInfo createQuery(Session session, String query, QueryId queryId)
     {
         requireNonNull(query, "query is null");
         checkArgument(!query.isEmpty(), "query must not be empty string");
-
-        QueryId queryId = session.getQueryId();
 
         QueryExecution queryExecution;
         Statement statement;
@@ -339,6 +337,12 @@ public class SqlQueryManager
         }
 
         return queryInfo;
+    }
+
+    @Override
+    public QueryInfo createQuery(Session session, String query)
+    {
+        return createQuery(session, query, session.getQueryId());
     }
 
     @Override

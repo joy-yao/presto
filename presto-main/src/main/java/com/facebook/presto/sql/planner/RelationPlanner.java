@@ -75,6 +75,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.UnmodifiableIterator;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -135,11 +136,14 @@ class RelationPlanner
 
         ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
         ImmutableMap.Builder<Symbol, ColumnHandle> columns = ImmutableMap.builder();
+
+        Map<Symbol, Symbol> symbolMap = new HashMap<>();
         for (Field field : tableType.getAllFields()) {
             Symbol symbol = symbolAllocator.newSymbol(field.getName().get(), field.getType());
 
             outputSymbolsBuilder.add(symbol);
             columns.put(symbol, analysis.getColumn(field));
+            symbolMap.put(new Symbol(field.getName().get()), symbol);
         }
 
         List<Symbol> planOutputSymbols = outputSymbolsBuilder.build();

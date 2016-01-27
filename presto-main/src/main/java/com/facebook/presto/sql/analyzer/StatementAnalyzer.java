@@ -1078,6 +1078,7 @@ class StatementAnalyzer
 
         RelationType descriptor = new RelationType(fields.build());
         analysis.setOutputDescriptor(table, descriptor);
+
         return descriptor;
     }
 

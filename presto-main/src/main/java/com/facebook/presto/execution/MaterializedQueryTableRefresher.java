@@ -13,30 +13,16 @@
  */
 package com.facebook.presto.execution;
 
-import com.facebook.presto.Session;
-import io.airlift.units.Duration;
+import com.facebook.presto.spi.ConnectorSession;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
-public interface QueryManager
+public interface MaterializedQueryTableRefresher
 {
-    List<QueryInfo> getAllQueryInfo();
-
-    Duration waitForStateChange(QueryId queryId, QueryState currentState, Duration maxWait)
+    void refreshMaterializedQueryTable(
+            String materializedQueryTable,
+            Map<String, String> predicateForBaseTables,
+            String predicateForMaterializedQueryTable,
+            ConnectorSession connectorSession)
             throws InterruptedException;
-
-    QueryInfo getQueryInfo(QueryId queryId);
-
-    Optional<QueryState> getQueryState(QueryId queryId);
-
-    void recordHeartbeat(QueryId queryId);
-
-    QueryInfo createQuery(Session session, String query);
-
-    QueryInfo createQuery(Session session, String query, QueryId queryId);
-
-    void cancelQuery(QueryId queryId);
-
-    void cancelStage(StageId stageId);
 }

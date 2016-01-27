@@ -321,6 +321,9 @@ public class ServerMainModule
         jsonCodecBinder(binder).bindJsonCodec(QueryResults.class);
         jaxrsBinder(binder).bind(StatementResource.class);
 
+        // for refresh materialized query table procedure call
+        jsonCodecBinder(binder).bindMapJsonCodec(String.class, String.class);
+
         // execute resource
         jaxrsBinder(binder).bind(ExecuteResource.class);
         httpClientBinder(binder).bindHttpClient("execute", ForExecute.class)
