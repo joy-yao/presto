@@ -798,6 +798,8 @@ class StatementAnalyzer
 
         analysis.setCreateTableAsSelectWithData(node.isWithData());
 
+        analysis.setCreateMaterializedQueryTable(node.isMaterializedQueryTable());
+
         // analyze the query that creates the table
         RelationType descriptor = process(node.getQuery(), context);
 

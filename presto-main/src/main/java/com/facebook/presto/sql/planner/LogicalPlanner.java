@@ -23,6 +23,7 @@ import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.analyzer.Analysis;
 import com.facebook.presto.sql.analyzer.Field;
 import com.facebook.presto.sql.analyzer.RelationType;
@@ -153,7 +154,11 @@ public class LogicalPlanner
 
         RelationPlan plan = createRelationPlan(analysis, query);
 
-        TableMetadata tableMetadata = createTableMetadata(destination, getOutputTableColumns(plan), analysis.getCreateTableProperties(), plan.getSampleWeight().isPresent());
+        TableMetadata tableMetadata = createTableMetadata(destination,
+                getOutputTableColumns(plan),
+                analysis.getCreateTableProperties(),
+                plan.getSampleWeight().isPresent(),
+                Optional.ofNullable(getMaterializedQuery(analysis.isCreateMaterializedQueryTable(), analysis.getStatement())));
         if (plan.getSampleWeight().isPresent() && !metadata.canCreateSampledTables(session, destination.getCatalogName())) {
             throw new PrestoException(NOT_SUPPORTED, "Cannot write sampled data to a store that doesn't support sampling");
         }
@@ -166,6 +171,14 @@ public class LogicalPlanner
                 new CreateName(destination.getCatalogName(), tableMetadata, newTableLayout),
                 tableMetadata.getVisibleColumnNames(),
                 newTableLayout);
+    }
+
+    private static String getMaterializedQuery(boolean isCreateMaterializedQueryTable, Statement statement)
+    {
+        if (isCreateMaterializedQueryTable && (statement instanceof CreateTableAsSelect)) {
+            return SqlFormatter.formatSql(((CreateTableAsSelect) statement).getQuery());
+        }
+        return null;
     }
 
     private RelationPlan createInsertPlan(Analysis analysis, Insert insertStatement)
@@ -329,7 +342,12 @@ public class LogicalPlanner
                 .process(query, null);
     }
 
-    private TableMetadata createTableMetadata(QualifiedObjectName table, List<ColumnMetadata> columns, Map<String, Expression> propertyExpressions, boolean sampled)
+    private TableMetadata createTableMetadata(
+            QualifiedObjectName table,
+            List<ColumnMetadata> columns,
+            Map<String, Expression> propertyExpressions,
+            boolean sampled,
+            Optional<String> materializedQuery)
     {
         String owner = session.getUser();
 
@@ -339,7 +357,7 @@ public class LogicalPlanner
                 session,
                 metadata);
 
-        ConnectorTableMetadata metadata = new ConnectorTableMetadata(table.asSchemaTableName(), columns, properties, owner, sampled);
+        ConnectorTableMetadata metadata = new ConnectorTableMetadata(table.asSchemaTableName(), columns, properties, owner, sampled, materializedQuery);
         // TODO: first argument should actually be connectorId
         return new TableMetadata(table.getCatalogName(), metadata);
     }
