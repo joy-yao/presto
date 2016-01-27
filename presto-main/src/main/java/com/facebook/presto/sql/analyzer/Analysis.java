@@ -91,6 +91,7 @@ public class Analysis
     private Map<String, Expression> createTableProperties = ImmutableMap.of();
     private boolean createTableAsSelectWithData = true;
     private boolean createTableAsSelectNoOp = false;
+    private boolean createMaterializedQueryTable = false;
 
     private Optional<Insert> insert = Optional.empty();
 
@@ -132,6 +133,16 @@ public class Analysis
     public void setCreateTableAsSelectNoOp(boolean createTableAsSelectNoOp)
     {
         this.createTableAsSelectNoOp = createTableAsSelectNoOp;
+    }
+
+    public boolean isCreateMaterializedQueryTable()
+    {
+        return createMaterializedQueryTable;
+    }
+
+    public void setCreateMaterializedQueryTable(boolean createMaterializedQueryTable)
+    {
+        this.createMaterializedQueryTable = createMaterializedQueryTable;
     }
 
     public void addResolvedNames(Map<Expression, Integer> mappings)
