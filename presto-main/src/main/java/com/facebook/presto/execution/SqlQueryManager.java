@@ -22,7 +22,9 @@ import com.facebook.presto.memory.ClusterMemoryManager;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.sql.parser.ParsingException;
 import com.facebook.presto.sql.parser.SqlParser;
+import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.Explain;
+import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.transaction.TransactionManager;
 import io.airlift.concurrent.ThreadPoolExecutorMBean;
@@ -268,12 +270,10 @@ public class SqlQueryManager
     }
 
     @Override
-    public QueryInfo createQuery(Session session, String query)
+    public QueryInfo createQuery(Session session, String query, QueryId queryId, boolean triggeredByRefresh)
     {
         requireNonNull(query, "query is null");
         checkArgument(!query.isEmpty(), "query must not be empty string");
-
-        QueryId queryId = session.getQueryId();
 
         QueryExecution queryExecution;
         Statement statement;
@@ -287,6 +287,16 @@ public class SqlQueryManager
                 Statement innerStatement = ((Explain) statement).getStatement();
                 if (!(executionFactories.get(innerStatement.getClass()) instanceof SqlQueryExecutionFactory)) {
                     throw new PrestoException(NOT_SUPPORTED, "EXPLAIN ANALYZE only supported for statements that are queries");
+                }
+            }
+            if (triggeredByRefresh) {
+                if (statement instanceof Insert) {
+                    Insert oldInsert = (Insert) statement;
+                    statement = new Insert(oldInsert.getTarget(), oldInsert.getColumns(), oldInsert.getQuery(), true);
+                }
+                else if (statement instanceof Delete) {
+                    Delete oldDelete = (Delete) statement;
+                    statement = new Delete(oldDelete.getTable(), oldDelete.getWhere(), true);
                 }
             }
             queryExecution = queryExecutionFactory.createQueryExecution(queryId, query, session, statement);
@@ -339,6 +349,12 @@ public class SqlQueryManager
         }
 
         return queryInfo;
+    }
+
+    @Override
+    public QueryInfo createQuery(Session session, String query)
+    {
+        return createQuery(session, query, session.getQueryId(), false);
     }
 
     @Override

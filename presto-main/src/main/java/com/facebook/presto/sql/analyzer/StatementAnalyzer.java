@@ -147,6 +147,7 @@ import static com.facebook.presto.metadata.MetadataUtil.createQualifiedName;
 import static com.facebook.presto.metadata.MetadataUtil.createQualifiedObjectName;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_TABLE_PROPERTY;
+import static com.facebook.presto.spi.StandardErrorCode.USER_ERROR;
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
@@ -659,6 +660,15 @@ class StatementAnalyzer
             throw new SemanticException(NOT_SUPPORTED, insert, "Inserting into views is not supported");
         }
 
+        Optional<TableHandle> tableHandle = metadata.getTableHandle(session, targetTable);
+        if (!tableHandle.isPresent()) {
+            throw new SemanticException(MISSING_TABLE, insert, String.format("Table %s does not exist.", targetTable));
+        }
+
+        if (metadata.getTableMetadata(session, tableHandle.get()).getMetadata().isMaterializedQueryTable() && !insert.isTriggeredByRefresh()) {
+            throw new PrestoException(USER_ERROR, "Cannot insert into materialized query table");
+        }
+
         // analyze the query that creates the data
         RelationType queryDescriptor = process(insert.getQuery(), context);
 
@@ -743,6 +753,15 @@ class StatementAnalyzer
         QualifiedObjectName tableName = createQualifiedObjectName(session, table, table.getName());
         if (metadata.getView(session, tableName).isPresent()) {
             throw new SemanticException(NOT_SUPPORTED, node, "Deleting from views is not supported");
+        }
+
+        Optional<TableHandle> tableHandle = metadata.getTableHandle(session, tableName);
+        if (!tableHandle.isPresent()) {
+            throw new SemanticException(MISSING_TABLE, node, String.format("Table %s does not exist.", tableName));
+        }
+
+        if (metadata.getTableMetadata(session, tableHandle.get()).getMetadata().isMaterializedQueryTable() && !node.isTriggeredByRefresh()) {
+            throw new PrestoException(USER_ERROR, "Cannot delete into materialized query table");
         }
 
         // Analyzer checks for select permissions but DELETE has a separate permission, so disable access checks
@@ -1078,6 +1097,7 @@ class StatementAnalyzer
 
         RelationType descriptor = new RelationType(fields.build());
         analysis.setOutputDescriptor(table, descriptor);
+
         return descriptor;
     }
 

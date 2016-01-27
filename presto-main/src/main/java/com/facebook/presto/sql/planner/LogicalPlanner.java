@@ -46,8 +46,10 @@ import com.facebook.presto.sql.tree.Explain;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.NullLiteral;
+import com.facebook.presto.sql.tree.QualifiedName;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.Statement;
+import com.facebook.presto.sql.tree.Table;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -153,12 +155,17 @@ public class LogicalPlanner
         QualifiedObjectName destination = analysis.getCreateTableDestination().get();
 
         RelationPlan plan = createRelationPlan(analysis, query);
+        Optional<String> materializedQuery = Optional.empty();
+        if (analysis.isCreateMaterializedQueryTable()) {
+            materializedQuery = Optional.of(formatMaterializedQueryTableQuery(((CreateTableAsSelect) analysis.getStatement()).getQuery(), session));
+        }
 
         TableMetadata tableMetadata = createTableMetadata(destination,
                 getOutputTableColumns(plan),
                 analysis.getCreateTableProperties(),
                 plan.getSampleWeight().isPresent(),
-                Optional.ofNullable(getMaterializedQuery(analysis.isCreateMaterializedQueryTable(), analysis.getStatement())));
+                materializedQuery);
+
         if (plan.getSampleWeight().isPresent() && !metadata.canCreateSampledTables(session, destination.getCatalogName())) {
             throw new PrestoException(NOT_SUPPORTED, "Cannot write sampled data to a store that doesn't support sampling");
         }
@@ -173,12 +180,31 @@ public class LogicalPlanner
                 newTableLayout);
     }
 
-    private static String getMaterializedQuery(boolean isCreateMaterializedQueryTable, Statement statement)
+    private String formatMaterializedQueryTableQuery(Query query, Session session)
     {
-        if (isCreateMaterializedQueryTable && (statement instanceof CreateTableAsSelect)) {
-            return SqlFormatter.formatSql(((CreateTableAsSelect) statement).getQuery());
-        }
-        return null;
+        checkState(session.getCatalog().isPresent(), "catalog is not present in session");
+        checkState(session.getSchema().isPresent(), "schema is not present in session");
+
+        StringBuilder stringBuilder = new StringBuilder();
+        SqlFormatter.Formatter formatter = new SqlFormatter.Formatter(stringBuilder, false)
+        {
+            @Override
+            protected Void visitTable(Table node, Integer indent)
+            {
+                QualifiedName qualifiedName = node.getName();
+                if (qualifiedName.getParts().size() == 1) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), session.getSchema().get(), qualifiedName.getSuffix());
+                }
+                else if (qualifiedName.getParts().size() == 2) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), qualifiedName.getPrefix().get().toString(), qualifiedName.getSuffix());
+                }
+                stringBuilder.append(qualifiedName.toString());
+                return null;
+            }
+        };
+
+        formatter.process(query, 0);
+        return stringBuilder.toString();
     }
 
     private RelationPlan createInsertPlan(Analysis analysis, Insert insertStatement)
