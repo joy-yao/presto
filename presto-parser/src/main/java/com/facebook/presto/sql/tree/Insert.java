@@ -27,24 +27,26 @@ public final class Insert
     private final Query query;
     private final Optional<List<String>> columns;
     private final Optional<Expression> mqtRefreshPredicate;
+    private final boolean triggeredByRefresh;
 
     public Insert(QualifiedName target, Optional<List<String>> columns, Query query)
     {
-        this(Optional.empty(), columns, target, query, Optional.empty());
+        this(Optional.empty(), columns, target, query, Optional.empty(), false);
     }
 
-    public Insert(QualifiedName target, Optional<List<String>> columns, Query query, Optional<Expression> mqtRefreshPredicate)
+    public Insert(QualifiedName target, Optional<List<String>> columns, Query query, Optional<Expression> mqtRefreshPredicate, boolean triggeredByRefresh)
     {
-        this(Optional.empty(), columns, target, query, mqtRefreshPredicate);
+        this(Optional.empty(), columns, target, query, mqtRefreshPredicate, triggeredByRefresh);
     }
 
-    private Insert(Optional<NodeLocation> location, Optional<List<String>> columns, QualifiedName target, Query query, Optional<Expression> mqtRefreshPredicate)
+    private Insert(Optional<NodeLocation> location, Optional<List<String>> columns, QualifiedName target, Query query, Optional<Expression> mqtRefreshPredicate, boolean triggeredByRefresh)
     {
         super(location);
         this.target = requireNonNull(target, "target is null");
         this.columns = requireNonNull(columns, "columns is null");
         this.query = requireNonNull(query, "query is null");
         this.mqtRefreshPredicate = requireNonNull(mqtRefreshPredicate, "mqtRefreshPredicate is null");
+        this.triggeredByRefresh = triggeredByRefresh;
     }
 
     public QualifiedName getTarget()
@@ -67,6 +69,11 @@ public final class Insert
         return mqtRefreshPredicate;
     }
 
+    public boolean isTriggeredByRefresh()
+    {
+        return triggeredByRefresh;
+    }
+
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
@@ -76,7 +83,7 @@ public final class Insert
     @Override
     public int hashCode()
     {
-        return Objects.hash(target, columns, query, mqtRefreshPredicate);
+        return Objects.hash(target, columns, query, mqtRefreshPredicate, triggeredByRefresh);
     }
 
     @Override
@@ -92,7 +99,8 @@ public final class Insert
         return Objects.equals(target, o.target) &&
                 Objects.equals(columns, o.columns) &&
                 Objects.equals(query, o.query) &&
-                Objects.equals(mqtRefreshPredicate, o.mqtRefreshPredicate);
+                Objects.equals(mqtRefreshPredicate, o.mqtRefreshPredicate) &&
+                Objects.equals(triggeredByRefresh, o.triggeredByRefresh);
     }
 
     @Override
@@ -103,6 +111,7 @@ public final class Insert
                 .add("columns", columns)
                 .add("query", query)
                 .add("mqtRefreshPredicate", mqtRefreshPredicate)
+                .add("triggeredByRefresh", triggeredByRefresh)
                 .toString();
     }
 }
