@@ -121,19 +121,24 @@ public class SqlMaterializedQueryTableRefresher
         QualifiedName materializedQueryTableName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(materializedQueryTable));
 
         Optional<Expression> changesToMaterializedQueryTable = Optional.empty();
+        boolean skipDelete = false;
         if (predicateForMaterializedQueryTable != null && !predicateForMaterializedQueryTable.trim().isEmpty()) {
             Expression expression = sqlParser.createExpression(predicateForMaterializedQueryTable);
+            if (BooleanLiteral.FALSE_LITERAL.equals(expression)) {
+                skipDelete = true;
+            }
             changesToMaterializedQueryTable = Optional.of(expression);
         }
 
-        // materializedQueryTable is always the fully qualified name.
-        Delete delete = new Delete(new Table(materializedQueryTableName), changesToMaterializedQueryTable);
-        QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
-        QueryInfo queryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(delete), deleteQueryId);
-        queryInfo = waitForQueryToFinish(queryInfo, deleteQueryId);
-        if (queryInfo.getState() != FINISHED) {
-            transactionManager.asyncAbort(transactionId);
-            throw new PrestoException(REFRESH_TABLE_FAILED, format("Failed to delete from materialized query table '%s'", materializedQueryTable));
+        if (!skipDelete) {
+            Delete delete = new Delete(new Table(materializedQueryTableName), changesToMaterializedQueryTable);
+            QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
+            QueryInfo queryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(delete), deleteQueryId, true);
+            queryInfo = waitForQueryToFinish(queryInfo, deleteQueryId);
+            if (queryInfo.getState() != FINISHED) {
+                transactionManager.asyncAbort(transactionId);
+                throw new PrestoException(REFRESH_TABLE_FAILED, format("Failed to delete from materialized query table '%s'", materializedQueryTable));
+            }
         }
 
         Expression refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables);
@@ -161,7 +166,7 @@ public class SqlMaterializedQueryTableRefresher
         }
 
         Insert insert = new Insert(materializedQueryTableName, Optional.empty(), materializedQuery);
-        QueryInfo insertQueryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(insert), session.getQueryId());
+        QueryInfo insertQueryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(insert), session.getQueryId(), true);
         insertQueryInfo = waitForQueryToFinish(insertQueryInfo, session.getQueryId());
 
         if (insertQueryInfo.getState() != FINISHED) {

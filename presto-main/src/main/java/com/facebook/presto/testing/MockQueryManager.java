@@ -65,7 +65,7 @@ public class MockQueryManager
     }
 
     @Override
-    public QueryInfo createQuery(Session session, String query, QueryId queryId)
+    public QueryInfo createQuery(Session session, String query, QueryId queryId, boolean triggeredByRefresh)
 
     {
         throw new UnsupportedOperationException();
