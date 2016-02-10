@@ -15,8 +15,10 @@ package com.facebook.presto.execution;
 
 import com.facebook.presto.spi.ConnectorSession;
 
+import java.util.Map;
+
 public interface MaterializedQueryTableRefresher
 {
-    void refreshMaterializedQueryTable(String materializedQueryTable, String predicateForBaseTables, String predicateForMqt, ConnectorSession connectorSession)
+    void refreshMaterializedQueryTable(String materializedQueryTable, Map<String, String> predicateForBaseTables, String predicateForMqt, ConnectorSession connectorSession)
             throws InterruptedException;
 }

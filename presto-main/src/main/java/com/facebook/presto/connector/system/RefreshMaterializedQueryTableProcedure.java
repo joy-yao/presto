@@ -16,10 +16,18 @@ package com.facebook.presto.connector.system;
 import com.facebook.presto.annotation.UsedByGeneratedCode;
 import com.facebook.presto.execution.MaterializedQueryTableRefresher;
 import com.facebook.presto.spi.ConnectorSession;
+import com.facebook.presto.spi.PrestoException;
+import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.procedure.Procedure;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 
 import javax.inject.Inject;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 import static com.facebook.presto.util.Reflection.methodHandle;
@@ -38,7 +46,24 @@ public class RefreshMaterializedQueryTableProcedure
     @UsedByGeneratedCode
     public void refresh(String materializedQueryTable, String predicateForBaseTables, String predicateForMqt, ConnectorSession session) throws Exception
     {
-        tableRefresher.refreshMaterializedQueryTable(materializedQueryTable, predicateForBaseTables, predicateForMqt, session);
+        tableRefresher.refreshMaterializedQueryTable(materializedQueryTable, parsePredicates(predicateForBaseTables), predicateForMqt, session);
+    }
+
+    private static Map<String, String> parsePredicates(String predicate)
+    {
+        if (predicate == null || predicate.trim().isEmpty()) {
+            return Collections.EMPTY_MAP;
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readValue(predicate, new TypeReference<Map<String, String>>()
+            {
+            });
+        }
+        catch (IOException e) {
+            throw new PrestoException(StandardErrorCode.REFRESH_TABLE_FAILED, String.format("Invalid format for predicate %s. Exception %s", predicate, e));
+        }
     }
 
     public Procedure getProcedure()

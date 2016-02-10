@@ -13,7 +13,9 @@
  */
 package com.facebook.presto.sql.tree;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -26,20 +28,21 @@ public final class Insert
     private final QualifiedName target;
     private final Query query;
     private final Optional<List<String>> columns;
-    private final Optional<Expression> mqtRefreshPredicate;
+    // Mapping from tableName to the expression.
+    private final Map<QualifiedName, Expression> mqtRefreshPredicate;
     private final boolean triggeredByRefresh;
 
     public Insert(QualifiedName target, Optional<List<String>> columns, Query query)
     {
-        this(Optional.empty(), columns, target, query, Optional.empty(), false);
+        this(Optional.empty(), columns, target, query, Collections.EMPTY_MAP, false);
     }
 
-    public Insert(QualifiedName target, Optional<List<String>> columns, Query query, Optional<Expression> mqtRefreshPredicate, boolean triggeredByRefresh)
+    public Insert(QualifiedName target, Optional<List<String>> columns, Query query, Map<QualifiedName, Expression> mqtRefreshPredicate, boolean triggeredByRefresh)
     {
         this(Optional.empty(), columns, target, query, mqtRefreshPredicate, triggeredByRefresh);
     }
 
-    private Insert(Optional<NodeLocation> location, Optional<List<String>> columns, QualifiedName target, Query query, Optional<Expression> mqtRefreshPredicate, boolean triggeredByRefresh)
+    private Insert(Optional<NodeLocation> location, Optional<List<String>> columns, QualifiedName target, Query query, Map<QualifiedName, Expression> mqtRefreshPredicate, boolean triggeredByRefresh)
     {
         super(location);
         this.target = requireNonNull(target, "target is null");
@@ -64,7 +67,7 @@ public final class Insert
         return query;
     }
 
-    public Optional<Expression> getMqtRefreshPredicate()
+    public Map<QualifiedName, Expression> getMqtRefreshPredicate()
     {
         return mqtRefreshPredicate;
     }

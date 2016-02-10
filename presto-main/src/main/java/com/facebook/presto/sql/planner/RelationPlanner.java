@@ -15,9 +15,12 @@ package com.facebook.presto.sql.planner;
 
 import com.facebook.presto.Session;
 import com.facebook.presto.metadata.Metadata;
+import com.facebook.presto.metadata.QualifiedObjectName;
 import com.facebook.presto.metadata.Signature;
 import com.facebook.presto.metadata.TableHandle;
 import com.facebook.presto.spi.ColumnHandle;
+import com.facebook.presto.spi.ConnectorTableMetadata;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.ExpressionUtils;
@@ -26,6 +29,7 @@ import com.facebook.presto.sql.analyzer.Field;
 import com.facebook.presto.sql.analyzer.FieldOrExpression;
 import com.facebook.presto.sql.analyzer.RelationType;
 import com.facebook.presto.sql.analyzer.SemanticException;
+import com.facebook.presto.sql.parser.ParsingException;
 import com.facebook.presto.sql.planner.plan.AggregationNode;
 import com.facebook.presto.sql.planner.plan.FilterNode;
 import com.facebook.presto.sql.planner.plan.JoinNode;
@@ -71,12 +75,15 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.UnmodifiableIterator;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import static com.facebook.presto.spi.StandardErrorCode.NOT_FOUND;
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.sql.analyzer.SemanticErrorCode.NOT_SUPPORTED;
@@ -135,11 +142,14 @@ class RelationPlanner
 
         ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
         ImmutableMap.Builder<Symbol, ColumnHandle> columns = ImmutableMap.builder();
+
+        Map<Symbol, Symbol> symbolMap = new HashMap<>();
         for (Field field : tableType.getAllFields()) {
             Symbol symbol = symbolAllocator.newSymbol(field.getName().get(), field.getType());
 
             outputSymbolsBuilder.add(symbol);
             columns.put(symbol, analysis.getColumn(field));
+            symbolMap.put(new Symbol(field.getName().get()), symbol);
         }
 
         List<Symbol> planOutputSymbols = outputSymbolsBuilder.build();
@@ -153,12 +163,34 @@ class RelationPlanner
 
         List<Symbol> nodeOutputSymbols = outputSymbolsBuilder.build();
         PlanNode root = new TableScanNode(idAllocator.getNextId(), handle, nodeOutputSymbols, columns.build(), Optional.empty(), TupleDomain.all(), null);
-        if (analysis.getMaterializedQueryTableRefreshPredicate().isPresent()) {
-            // FIXME: The predicate may contain predicate for many base tables.
-            root = new FilterNode(idAllocator.getNextId(), root, analysis.getMaterializedQueryTableRefreshPredicate().get());
+
+        if (analysis.getMaterializedQueryTableRefreshPredicate().containsKey(node.getName())) {
+            Expression expression = analysis.getMaterializedQueryTableRefreshPredicate().get(node.getName());
+            TupleDomain<Symbol> symbolTupleDomain = evaluatePredicate(node.getName(), expression, session);
+            Expression newPredicate = DomainTranslator.toPredicate(symbolTupleDomain.transform(symbol -> symbolMap.get(symbol)));
+            root = new FilterNode(idAllocator.getNextId(), root, newPredicate);
         }
 
         return new RelationPlan(root, tableType, planOutputSymbols, Optional.ofNullable(sampleWeightSymbol));
+    }
+
+    private TupleDomain<Symbol> evaluatePredicate(QualifiedName tableName, Expression predicate, Session session)
+    {
+        Optional<TableHandle> tableHandle = metadata.getTableHandle(session, QualifiedObjectName.valueOf(tableName.toString()));
+        if (!tableHandle.isPresent()) {
+            throw new PrestoException(NOT_FOUND, String.format("Cannot find table %s", tableName));
+        }
+
+        ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle.get()).getMetadata();
+        Map<Symbol, Type> types = tableMetadata.getColumns().stream()
+                .collect(Collectors.toMap(column -> new Symbol(column.getName()), column -> column.getType()));
+
+        DomainTranslator.ExtractionResult extractionResult = DomainTranslator.fromPredicate(metadata, session, predicate, types);
+        if (!extractionResult.getRemainingExpression().equals(BooleanLiteral.TRUE_LITERAL)) {
+            throw new ParsingException("Unsupported predicate structure. Try simplifying your predicate. predicate: " + predicate + " table: " + tableName);
+        }
+
+        return extractionResult.getTupleDomain();
     }
 
     @Override

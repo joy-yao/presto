@@ -13,9 +13,12 @@
  */
 package com.facebook.presto.sql.analyzer;
 
+import com.facebook.presto.sql.tree.Expression;
+import com.facebook.presto.sql.tree.QualifiedName;
 import com.facebook.presto.sql.tree.Query;
 import com.google.common.base.Preconditions;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,6 +28,7 @@ public class AnalysisContext
     private final Map<String, Query> namedQueries = new HashMap<>();
     private RelationType lateralTupleDescriptor = new RelationType();
     private boolean approximate;
+    private Map<QualifiedName, Expression> mqtRefreshPredicate = Collections.EMPTY_MAP;
 
     public AnalysisContext(AnalysisContext parent)
     {
@@ -77,5 +81,15 @@ public class AnalysisContext
     public boolean isNamedQueryDeclared(String name)
     {
         return namedQueries.containsKey(name);
+    }
+
+    public Map<QualifiedName, Expression> getMqtRefreshPredicate()
+    {
+        return mqtRefreshPredicate;
+    }
+
+    public void setMqtRefreshPredicate(Map<QualifiedName, Expression> mqtRefreshPredicate)
+    {
+        this.mqtRefreshPredicate = mqtRefreshPredicate;
     }
 }

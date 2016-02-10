@@ -530,6 +530,7 @@ class StatementAnalyzer
 
         Query insertQuery = insert.getQuery();
         Optional<TableHandle> tableHandle = metadata.getTableHandle(session, targetTable);
+
         if (tableHandle.isPresent()) {
             ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle.get()).getMetadata();
             if (tableMetadata.getMqtQuery().isPresent()) {
@@ -591,6 +592,8 @@ class StatementAnalyzer
                     "Table: [" + Joiner.on(", ").join(tableTypes) + "], " +
                     "Query: [" + Joiner.on(", ").join(queryTypes) + "]");
         }
+
+        context.setMqtRefreshPredicate(insert.getMqtRefreshPredicate());
 
         return new RelationType(Field.newUnqualified("rows", BIGINT));
     }
@@ -931,6 +934,18 @@ class StatementAnalyzer
 
         RelationType descriptor = new RelationType(fields.build());
         analysis.setOutputDescriptor(table, descriptor);
+
+        if (context.getMqtRefreshPredicate().containsKey(table.getName())) {
+            ExpressionAnalyzer.analyzeExpression(session,
+                    metadata,
+                    accessControl,
+                    sqlParser,
+                    descriptor,
+                    analysis,
+                    experimentalSyntaxEnabled,
+                    context,
+                    context.getMqtRefreshPredicate().get(table.getName()));
+        }
         return descriptor;
     }
 

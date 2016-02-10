@@ -24,6 +24,7 @@ import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.InPredicate;
 import com.facebook.presto.sql.tree.Join;
 import com.facebook.presto.sql.tree.Node;
+import com.facebook.presto.sql.tree.QualifiedName;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Relation;
@@ -38,6 +39,7 @@ import com.google.common.collect.SetMultimap;
 
 import javax.annotation.concurrent.Immutable;
 
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +90,7 @@ public class Analysis
     private Map<String, Expression> createTableProperties = ImmutableMap.of();
     private boolean createTableAsSelectWithData = true;
     private boolean createMaterializedQueryTable = false;
-    private Optional<Expression> materializedQueryTableRefreshPredicate = Optional.empty();
+    private Map<QualifiedName, Expression> materializedQueryTableRefreshPredicate = Collections.EMPTY_MAP;
 
     private Optional<Insert> insert = Optional.empty();
 
@@ -135,12 +137,12 @@ public class Analysis
         this.createMaterializedQueryTable = createMaterializedQueryTable;
     }
 
-    public Optional<Expression> getMaterializedQueryTableRefreshPredicate()
+    public Map<QualifiedName, Expression> getMaterializedQueryTableRefreshPredicate()
     {
         return materializedQueryTableRefreshPredicate;
     }
 
-    public void setMaterializedQueryTableRefreshPredicate(Optional<Expression> predicate)
+    public void setMaterializedQueryTableRefreshPredicate(Map<QualifiedName, Expression> predicate)
     {
         materializedQueryTableRefreshPredicate = predicate;
     }

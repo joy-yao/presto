@@ -24,6 +24,7 @@ import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.parser.SqlParser;
+import com.facebook.presto.sql.tree.BooleanLiteral;
 import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
@@ -38,6 +39,9 @@ import io.airlift.units.Duration;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.facebook.presto.server.StatementResource.Query.isQueryStarted;
@@ -77,7 +81,7 @@ public class SqlMaterializedQueryTableRefresher
     }
 
     @Override
-    public void refreshMaterializedQueryTable(String materializedQueryTable, String predicateForBaseTables, String predicateForMqt, ConnectorSession connectorSession)
+    public void refreshMaterializedQueryTable(String materializedQueryTable, Map<String, String> predicateForBaseTables, String predicateForMqt, ConnectorSession connectorSession)
             throws InterruptedException
     {
         requireNonNull(materializedQueryTable, "materializedQueryTable is null");
@@ -112,20 +116,16 @@ public class SqlMaterializedQueryTableRefresher
         Query mqtQuery = (Query) sqlParser.createStatement(tableMetadata.getMqtQuery().get());
         QualifiedName materializedQueryTableName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(materializedQueryTable));
 
-        Optional<Expression> predicateForChangesToMqt = Optional.empty();
-        if (predicateForMqt != null && !predicateForMqt.trim().isEmpty()) {
+        Optional<Expression> refreshPredicateForMqt = Optional.empty();
+        if (refreshPredicateForMqt != null && !predicateForMqt.trim().isEmpty()) {
             Expression expression = sqlParser.createExpression(predicateForMqt);
-            predicateForChangesToMqt = Optional.of(expression);
+            refreshPredicateForMqt = Optional.of(expression);
         }
 
-        Optional<Expression> predicateToQueryBaseTable = Optional.empty();
-        if (predicateForBaseTables != null && !predicateForBaseTables.trim().isEmpty()) {
-            Expression expression = sqlParser.createExpression(predicateForBaseTables);
-            predicateToQueryBaseTable = Optional.of(expression);
-        }
+        Map<QualifiedName, Expression> refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables);
 
         // materializedQueryTable is always the fully qualified name.
-        Delete delete = new Delete(new Table(materializedQueryTableName), predicateForChangesToMqt, true);
+        Delete delete = new Delete(new Table(materializedQueryTableName), refreshPredicateForMqt, true);
         QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
         QueryInfo queryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(delete), Optional.of(delete), deleteQueryId);
         queryInfo = waitForQueryToFinish(queryInfo, deleteQueryId);
@@ -134,7 +134,7 @@ public class SqlMaterializedQueryTableRefresher
             throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Failed to delete from materialized query table %s", materializedQueryTable));
         }
 
-        Insert insert = new Insert(materializedQueryTableName, Optional.empty(), mqtQuery, predicateToQueryBaseTable, true);
+        Insert insert = new Insert(materializedQueryTableName, Optional.empty(), mqtQuery, refreshPredicateForBaseTables, true);
         queryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(insert), Optional.of(insert), session.getQueryId());
         queryInfo = waitForQueryToFinish(queryInfo, session.getQueryId());
 
@@ -146,10 +146,30 @@ public class SqlMaterializedQueryTableRefresher
 //        transactionManager.asyncCommit(transactionId);
     }
 
+    private Map<QualifiedName, Expression> parseBaseTablePredicates(Map<String, String> predicateForBaseTables)
+    {
+        if (predicateForBaseTables.isEmpty()) {
+            return Collections.EMPTY_MAP;
+        }
+
+        Map<QualifiedName, Expression> predicates = new HashMap();
+        for (Map.Entry<String, String> entry : predicateForBaseTables.entrySet()) {
+            QualifiedName qualifiedName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(entry.getKey()));
+            Expression expression = sqlParser.createExpression(entry.getValue());
+
+            if (BooleanLiteral.TRUE_LITERAL.equals(expression)) {
+                throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Predicate %s for materialized query table %s should not be equivalent to True", entry.getValue(), qualifiedName));
+            }
+            predicates.put(qualifiedName, expression);
+        }
+        return predicates;
+    }
+
     private QueryInfo waitForQueryToFinish(QueryInfo queryInfo, QueryId queryId)
             throws InterruptedException
     {
-        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> { });
+        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> {
+        });
         // wait for it to start
         while (!isQueryStarted(queryInfo)) {
             queryManager.recordHeartbeat(queryId);
