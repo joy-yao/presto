@@ -247,6 +247,26 @@ public final class Session
                 sessionPropertyManager);
     }
 
+    public Session withCatalogAndSchema(String catalog, String schema)
+    {
+        return new Session(
+                queryId,
+                transactionId,
+                clientTransactionSupport,
+                identity,
+                source,
+                Optional.ofNullable(catalog),
+                Optional.ofNullable(schema),
+                timeZoneKey,
+                locale,
+                remoteUserAddress,
+                userAgent,
+                startTime,
+                systemProperties,
+                catalogProperties,
+                sessionPropertyManager);
+    }
+
     public Session withCatalogProperty(String catalog, String key, String value)
     {
         requireNonNull(catalog, "catalog is null");

@@ -30,6 +30,7 @@ import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.QualifiedNameReference;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.Table;
 import com.facebook.presto.transaction.TransactionId;
@@ -109,6 +110,8 @@ public class SqlMaterializedQueryTableRefresher
             throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Table %s is not a materialized query table", materializedQueryTable));
         }
 
+        session = session.withCatalogAndSchema(tableHandle.get().getConnectorId(), tableMetadata.getTable().getSchemaName());
+
         // FIXME: do this in a single transaction when raptor supports this.
         transactionManager.asyncCommit(transactionId);
         session = session.withoutTransactionId();
@@ -126,7 +129,7 @@ public class SqlMaterializedQueryTableRefresher
             refreshPredicateForMqt = Optional.of(expression);
         }
 
-        Map<QualifiedName, Expression> refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables);
+        Map<QualifiedName, Expression> refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables, session);
 
         if (!skipDelete) {
             // materializedQueryTable is always the fully qualified name.
@@ -152,7 +155,7 @@ public class SqlMaterializedQueryTableRefresher
 //        transactionManager.asyncCommit(transactionId);
     }
 
-    private Map<QualifiedName, Expression> parseBaseTablePredicates(Map<String, String> predicateForBaseTables)
+    private Map<QualifiedName, Expression> parseBaseTablePredicates(Map<String, String> predicateForBaseTables, Session session)
     {
         if (predicateForBaseTables.isEmpty()) {
             return Collections.EMPTY_MAP;
@@ -160,9 +163,19 @@ public class SqlMaterializedQueryTableRefresher
 
         Map<QualifiedName, Expression> predicates = new HashMap();
         for (Map.Entry<String, String> entry : predicateForBaseTables.entrySet()) {
-            QualifiedName qualifiedName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(entry.getKey()));
-            Expression expression = sqlParser.createExpression(entry.getValue());
+            Expression tableExpression = sqlParser.createExpression(entry.getKey());
+            QualifiedName qualifiedName;
+            if (tableExpression instanceof QualifiedNameReference) {
+                qualifiedName = QualifiedName.of(session.getCatalog().get(), session.getSchema().get(), entry.getKey());
+            }
+            else {
+                qualifiedName = DereferenceExpression.getQualifiedName((DereferenceExpression) tableExpression);
+                if (qualifiedName.getParts().size() == 2) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), qualifiedName.getPrefix().get().toString(), qualifiedName.getSuffix());
+                }
+            }
 
+            Expression expression = sqlParser.createExpression(entry.getValue());
             if (BooleanLiteral.TRUE_LITERAL.equals(expression)) {
                 throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Predicate %s for materialized query table %s should not be equivalent to True", entry.getValue(), qualifiedName));
             }

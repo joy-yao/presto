@@ -37,6 +37,9 @@ import com.facebook.presto.sql.planner.plan.TableFinishNode;
 import com.facebook.presto.sql.planner.plan.TableWriterNode;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.NullLiteral;
+import com.facebook.presto.sql.tree.QualifiedName;
+import com.facebook.presto.sql.tree.Query;
+import com.facebook.presto.sql.tree.Table;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -53,6 +56,7 @@ import static com.facebook.presto.sql.planner.plan.TableWriterNode.CreateName;
 import static com.facebook.presto.sql.planner.plan.TableWriterNode.InsertReference;
 import static com.facebook.presto.sql.planner.plan.TableWriterNode.WriterTarget;
 import static com.facebook.presto.util.ImmutableCollectors.toImmutableList;
+import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -123,7 +127,7 @@ public class LogicalPlanner
                 getOutputTableColumns(plan),
                 analysis.getCreateTableProperties(),
                 plan.getSampleWeight().isPresent(),
-                analysis.isCreateMaterializedQueryTable() ? Optional.of(SqlFormatter.formatSql(analysis.getQuery())) : Optional.empty());
+                analysis.isCreateMaterializedQueryTable() ? Optional.of(formatMaterializedQueryTableQuery(analysis.getQuery(), session)) : Optional.empty());
         if (plan.getSampleWeight().isPresent() && !metadata.canCreateSampledTables(session, destination.getCatalogName())) {
             throw new PrestoException(NOT_SUPPORTED, "Cannot write sampled data to a store that doesn't support sampling");
         }
@@ -136,6 +140,33 @@ public class LogicalPlanner
                 new CreateName(destination.getCatalogName(), tableMetadata, newTableLayout),
                 tableMetadata.getVisibleColumnNames(),
                 newTableLayout);
+    }
+
+    private String formatMaterializedQueryTableQuery(Query query, Session session)
+    {
+        checkState(session.getCatalog().isPresent(), "catalog is not present in session");
+        checkState(session.getSchema().isPresent(), "schema is not present in session");
+
+        StringBuilder stringBuilder = new StringBuilder();
+        SqlFormatter.Formatter formatter = new SqlFormatter.Formatter(stringBuilder, false)
+        {
+            @Override
+            protected Void visitTable(Table node, Integer indent)
+            {
+                QualifiedName qualifiedName = node.getName();
+                if (qualifiedName.getParts().size() == 1) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), session.getSchema().get(), qualifiedName.getSuffix());
+                }
+                else if (qualifiedName.getParts().size() == 2) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), qualifiedName.getPrefix().get().toString(), qualifiedName.getSuffix());
+                }
+                stringBuilder.append(qualifiedName.toString());
+                return null;
+            }
+        };
+
+        formatter.process(query, 0);
+        return stringBuilder.toString();
     }
 
     private RelationPlan createInsertPlan(Analysis analysis)

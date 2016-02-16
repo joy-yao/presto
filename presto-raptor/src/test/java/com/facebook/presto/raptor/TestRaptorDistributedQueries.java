@@ -83,7 +83,7 @@ public class TestRaptorDistributedQueries
                 "WITH NO DATA " +
                 "REFRESH ON DEMAND", 4);
         assertUpdate("CREATE TABLE test_refresh_mqt2 AS " +
-                "SELECT a, b, SUM(c) as c from raptor.tpch.test_refresh_base " +
+                "SELECT a, b, SUM(c) as c from test_refresh_base " +
                 "WHERE b < 10 " +
                 "GROUP BY a, b " +
                 "WITH NO DATA " +
@@ -124,13 +124,11 @@ public class TestRaptorDistributedQueries
         assertEquals(materializedRows2.getMaterializedRows().get(2).getField(1), 4L);
         assertEquals(materializedRows2.getMaterializedRows().get(2).getField(2), 5L);
 
-        queryRunner.execute(getSession(), "INSERT INTO test_refresh_base values (1, 2, 10)");
-        queryRunner.execute(getSession(), "INSERT INTO test_refresh_base values (2, 3, 5)");
-        queryRunner.execute(getSession(), "INSERT INTO test_refresh_base values (10, 20, 5)");
+        queryRunner.execute(getSession(), "INSERT INTO test_refresh_base values (1, 2, 10), (2, 3, 5), (10, 20, 5)");
 
         // Refresh both materialized tables with predicate
         queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt1', '{\"raptor.tpch.test_refresh_base\":\"a > 1\"}', 'a > 1')");
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt2', '{\"raptor.tpch.test_refresh_base\":\"a > 1\"}', 'a > 1')");
+        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt2', '{\"test_refresh_base\":\"a > 1\"}', 'a > 1')");
 
         materializedRows1 = computeActual("SELECT COUNT(1) FROM test_refresh_mqt1");
         assertEquals(materializedRows1.getMaterializedRows().get(0).getField(0), 4L);
