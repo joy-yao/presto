@@ -111,13 +111,15 @@ public class SqlMaterializedQueryTableRefresher
         }
 
         ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle.get()).getMetadata();
-        if (!tableMetadata.getMaterializedQuery().isPresent()) {
+        if (!tableMetadata.getMaterializedQueryTableInfo().isPresent()) {
             throw new PrestoException(REFRESH_TABLE_FAILED, format("Table '%s' is not a materialized query table", materializedQueryTable));
         }
 
+        session = session.withCatalogAndSchema(tableHandle.get().getConnectorId(), tableMetadata.getTable().getSchemaName());
+
         transactionManager.asyncCommit(transactionId);
         session = session.withoutTransactionId();
-        Query materializedQuery = (Query) sqlParser.createStatement(tableMetadata.getMaterializedQuery().get());
+        Query materializedQuery = (Query) sqlParser.createStatement(tableMetadata.getMaterializedQueryTableInfo().get().getQuery());
         QualifiedName materializedQueryTableName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(materializedQueryTable));
 
         Optional<Expression> changesToMaterializedQueryTable = Optional.empty();
@@ -141,17 +143,20 @@ public class SqlMaterializedQueryTableRefresher
             }
         }
 
-        Expression refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables);
+        Expression refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables, session);
         if (!BooleanLiteral.TRUE_LITERAL.equals(refreshPredicateForBaseTables)) {
             QuerySpecification oldQuerySpecification = (QuerySpecification) materializedQuery.getQueryBody();
             Optional<Expression> originalPredicateToBaseTable = oldQuerySpecification.getWhere();
-            Expression predicateForBaseTable = originalPredicateToBaseTable.isPresent() ? new LogicalBinaryExpression(LogicalBinaryExpression.Type.AND, originalPredicateToBaseTable.get(), refreshPredicateForBaseTables) : refreshPredicateForBaseTables;
+
+            if (originalPredicateToBaseTable.isPresent()) {
+                refreshPredicateForBaseTables = new LogicalBinaryExpression(LogicalBinaryExpression.Type.AND, originalPredicateToBaseTable.get(), refreshPredicateForBaseTables);
+            }
 
             QueryBody newQuerySpecification = new QuerySpecification(
                     oldQuerySpecification.getLocation(),
                     oldQuerySpecification.getSelect(),
                     oldQuerySpecification.getFrom(),
-                    Optional.of(predicateForBaseTable),
+                    Optional.of(refreshPredicateForBaseTables),
                     oldQuerySpecification.getGroupBy(),
                     oldQuerySpecification.getHaving(),
                     oldQuerySpecification.getOrderBy(),
@@ -177,20 +182,20 @@ public class SqlMaterializedQueryTableRefresher
         transactionManager.asyncCommit(transactionId);
     }
 
-    private Expression parseBaseTablePredicates(Map<String, String> predicateForBaseTables)
+    private Expression parseBaseTablePredicates(Map<String, String> predicateForBaseTables, Session session)
     {
         if (predicateForBaseTables.isEmpty()) {
             return BooleanLiteral.TRUE_LITERAL;
         }
 
         Expression predicates = BooleanLiteral.TRUE_LITERAL;
-        for (Map.Entry<String, String> entry : predicateForBaseTables.entrySet()) {
-            DereferenceExpression tableExpression = (DereferenceExpression) sqlParser.createExpression(entry.getKey());
-            QualifiedName qualifiedName = DereferenceExpression.getQualifiedName(tableExpression);
-            Expression expression = sqlParser.createExpression(entry.getValue());
 
+        for (Map.Entry<String, String> entry : predicateForBaseTables.entrySet()) {
+            Expression tableExpression = getTableExpression(entry.getKey(), session);
+
+            Expression expression = sqlParser.createExpression(entry.getValue());
             if (BooleanLiteral.TRUE_LITERAL.equals(expression)) {
-                throw new PrestoException(REFRESH_TABLE_FAILED, format("Predicate '%s' for materialized query table '%s' should not be equivalent to True", entry.getValue(), qualifiedName));
+                throw new PrestoException(REFRESH_TABLE_FAILED, format("Predicate '%s' for materialized query table '%s' should not be equivalent to True", entry.getValue(), tableExpression));
             }
 
             Expression rewrittenExpression = ExpressionTreeRewriter.rewriteWith(new ExpressionRewriter<Void>()
@@ -211,6 +216,28 @@ public class SqlMaterializedQueryTableRefresher
             predicates = new LogicalBinaryExpression(LogicalBinaryExpression.Type.AND, predicates, rewrittenExpression);
         }
         return predicates;
+    }
+
+    private DereferenceExpression getTableExpression(String tableName, Session session)
+    {
+        Expression tableExpression = sqlParser.createExpression(tableName);
+
+        if (tableExpression instanceof QualifiedNameReference) {
+            return new DereferenceExpression(
+                    new DereferenceExpression(
+                            new QualifiedNameReference(QualifiedName.of(session.getCatalog().get())), session.getSchema().get()),
+                    tableName);
+        }
+
+        QualifiedName qualifiedName = DereferenceExpression.getQualifiedName((DereferenceExpression) tableExpression);
+        if (qualifiedName.getParts().size() == 2) {
+            return new DereferenceExpression(
+                    new DereferenceExpression(
+                            new QualifiedNameReference(QualifiedName.of(session.getCatalog().get())), qualifiedName.getParts().get(0)),
+                    qualifiedName.getParts().get(1));
+        }
+
+        return (DereferenceExpression) tableExpression;
     }
 
     private QueryInfo waitForQueryToFinish(QueryInfo queryInfo, QueryId queryId)

@@ -13,7 +13,8 @@
  */
 package com.facebook.presto.spi;
 
-import com.sun.xml.internal.fastinfoset.QualifiedName;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
 import java.util.Objects;
@@ -23,14 +24,36 @@ import static java.util.Objects.requireNonNull;
 public class MaterializedQueryTableInfo
 {
     private final String query;
-    private final Map<QualifiedName, ConnectorTableHandle> baseTables;
-    private final Map<QualifiedName, ColumnHandle> baseTableColumns;
+    private final Map<String, ConnectorTableHandle> baseTables;
+    private final Map<String, ColumnHandle> baseTableColumns;
 
-    public MaterializedQueryTableInfo(String query, Map<QualifiedName, ConnectorTableHandle> baseTables, Map<QualifiedName, ColumnHandle> baseTableColumns)
+    @JsonCreator
+    public MaterializedQueryTableInfo(
+            @JsonProperty("query") String query,
+            @JsonProperty("baseTables") Map<String, ConnectorTableHandle> baseTables,
+            @JsonProperty("baseTableColumns") Map<String, ColumnHandle> baseTableColumns)
     {
         this.query = requireNonNull(query, "query is null");
         this.baseTables = requireNonNull(baseTables, "baseTables is null");
         this.baseTableColumns = requireNonNull(baseTableColumns, "baseTableColumns is null");
+    }
+
+    @JsonProperty
+    public String getQuery()
+    {
+        return query;
+    }
+
+    @JsonProperty
+    public Map<String, ConnectorTableHandle> getBaseTables()
+    {
+        return baseTables;
+    }
+
+    @JsonProperty
+    public Map<String, ColumnHandle> getBaseTableColumns()
+    {
+        return baseTableColumns;
     }
 
     @Override
@@ -64,4 +87,15 @@ public class MaterializedQueryTableInfo
         sb.append('}');
         return sb.toString();
     }
+//
+//    @Override
+//    public String toString()
+//    {
+//        return toStringHelper(this)
+//                .add("session", session)
+//                .add("fragment", fragment)
+//                .add("sources", sources)
+//                .add("outputIds", outputIds)
+//                .toString();
+//    }
 }

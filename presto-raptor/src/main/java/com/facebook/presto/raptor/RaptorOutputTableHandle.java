@@ -14,6 +14,7 @@
 package com.facebook.presto.raptor;
 
 import com.facebook.presto.spi.ConnectorOutputTableHandle;
+import com.facebook.presto.spi.MaterializedQueryTableInfo;
 import com.facebook.presto.spi.block.SortOrder;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -36,7 +37,7 @@ public class RaptorOutputTableHandle
     private final long transactionId;
     private final String schemaName;
     private final String tableName;
-    private final Optional<String> materializedQuery;
+    private final Optional<MaterializedQueryTableInfo> materializedQueryTableInfo;
     private final List<RaptorColumnHandle> columnHandles;
     private final List<Type> columnTypes;
     private final Optional<RaptorColumnHandle> sampleWeightColumnHandle;
@@ -53,7 +54,7 @@ public class RaptorOutputTableHandle
             @JsonProperty("transactionId") long transactionId,
             @JsonProperty("schemaName") String schemaName,
             @JsonProperty("tableName") String tableName,
-            @JsonProperty("materializedQuery") Optional<String> materializedQuery,
+            @JsonProperty("materializedQueryTableInfo") Optional<MaterializedQueryTableInfo> materializedQueryTableInfo,
             @JsonProperty("columnHandles") List<RaptorColumnHandle> columnHandles,
             @JsonProperty("columnTypes") List<Type> columnTypes,
             @JsonProperty("sampleWeightColumnHandle") Optional<RaptorColumnHandle> sampleWeightColumnHandle,
@@ -68,7 +69,7 @@ public class RaptorOutputTableHandle
         this.transactionId = transactionId;
         this.schemaName = checkSchemaName(schemaName);
         this.tableName = checkTableName(tableName);
-        this.materializedQuery = requireNonNull(materializedQuery, "materializedQuery is null");
+        this.materializedQueryTableInfo = requireNonNull(materializedQueryTableInfo, "materializedQueryTableInfo is null");
         this.columnHandles = ImmutableList.copyOf(requireNonNull(columnHandles, "columnHandles is null"));
         this.columnTypes = ImmutableList.copyOf(requireNonNull(columnTypes, "columnTypes is null"));
         this.sampleWeightColumnHandle = requireNonNull(sampleWeightColumnHandle, "sampleWeightColumnHandle is null");
@@ -105,9 +106,9 @@ public class RaptorOutputTableHandle
     }
 
     @JsonProperty
-    public Optional<String> getMaterializedQuery()
+    public Optional<MaterializedQueryTableInfo> getMaterializedQueryTableInfo()
     {
-        return materializedQuery;
+        return materializedQueryTableInfo;
     }
 
     @JsonProperty

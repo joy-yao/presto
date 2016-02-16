@@ -36,6 +36,7 @@ import com.facebook.presto.spi.ConnectorTableLayoutResult;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.ConnectorViewDefinition;
 import com.facebook.presto.spi.Constraint;
+import com.facebook.presto.spi.MaterializedQueryTableInfo;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
@@ -101,6 +102,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Collections.EMPTY_MAP;
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.nCopies;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
@@ -190,7 +192,12 @@ public class RaptorMetadata
         }
 
         columns.add(hiddenColumn(SHARD_UUID_COLUMN_NAME, VARCHAR));
-        return new ConnectorTableMetadata(tableName, columns, EMPTY_MAP, null, false, Optional.ofNullable(dao.getMaterializedQuery(handle.getTableId())));
+        MaterializedQueryTableInfo materializedQueryTableInfo = null;
+        String materializedQuery = dao.getMaterializedQuery(handle.getTableId());
+        if (materializedQuery != null) {
+            materializedQueryTableInfo = new MaterializedQueryTableInfo(materializedQuery, emptyMap(), emptyMap());
+        }
+        return new ConnectorTableMetadata(tableName, columns, EMPTY_MAP, null, false, Optional.ofNullable(materializedQueryTableInfo));
     }
 
     @Override
@@ -491,7 +498,7 @@ public class RaptorMetadata
                 transactionId,
                 tableMetadata.getTable().getSchemaName(),
                 tableMetadata.getTable().getTableName(),
-                tableMetadata.getMaterializedQuery(),
+                tableMetadata.getMaterializedQueryTableInfo(),
                 columnHandles.build(),
                 columnTypes.build(),
                 Optional.ofNullable(sampleWeightColumnHandle),
@@ -560,7 +567,11 @@ public class RaptorMetadata
             MetadataDao dao = dbiHandle.attach(MetadataDao.class);
 
             Long distributionId = table.getDistributionId().isPresent() ? table.getDistributionId().getAsLong() : null;
-            long tableId = dao.insertTable(table.getSchemaName(), table.getTableName(), true, distributionId, table.getMaterializedQuery().orElse(null));
+            String materializedQueryTableInfo = null;
+            if (table.getMaterializedQueryTableInfo().isPresent()) {
+                materializedQueryTableInfo = table.getMaterializedQueryTableInfo().toString();
+            }
+            long tableId = dao.insertTable(table.getSchemaName(), table.getTableName(), true, distributionId, materializedQueryTableInfo);
 
             List<RaptorColumnHandle> sortColumnHandles = table.getSortColumnHandles();
             List<RaptorColumnHandle> bucketColumnHandles = table.getBucketColumnHandles();

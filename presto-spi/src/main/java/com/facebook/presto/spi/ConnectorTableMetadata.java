@@ -88,7 +88,7 @@ public class ConnectorTableMetadata
 
     public boolean isMaterializedQueryTable()
     {
-        return materializedQuery.isPresent();
+        return materializedQueryTableInfo.isPresent();
     }
 
     public SchemaTableName getTable()

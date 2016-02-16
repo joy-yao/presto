@@ -79,11 +79,13 @@ public class TaskUpdateRequest
     @Override
     public String toString()
     {
-        return toStringHelper(this)
+        String s = toStringHelper(this)
                 .add("session", session)
                 .add("fragment", fragment)
                 .add("sources", sources)
                 .add("outputIds", outputIds)
                 .toString();
+        System.out.println("TaskUpdateRequest looks like [" + s + "]");
+        return s;
     }
 }
