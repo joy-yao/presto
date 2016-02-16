@@ -117,28 +117,34 @@ public class SqlMaterializedQueryTableRefresher
         QualifiedName materializedQueryTableName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(materializedQueryTable));
 
         Optional<Expression> refreshPredicateForMqt = Optional.empty();
+        boolean skipDelete = false;
         if (refreshPredicateForMqt != null && !predicateForMqt.trim().isEmpty()) {
             Expression expression = sqlParser.createExpression(predicateForMqt);
+            if (BooleanLiteral.FALSE_LITERAL.equals(expression)) {
+                skipDelete = true;
+            }
             refreshPredicateForMqt = Optional.of(expression);
         }
 
         Map<QualifiedName, Expression> refreshPredicateForBaseTables = parseBaseTablePredicates(predicateForBaseTables);
 
-        // materializedQueryTable is always the fully qualified name.
-        Delete delete = new Delete(new Table(materializedQueryTableName), refreshPredicateForMqt, true);
-        QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
-        QueryInfo queryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(delete), Optional.of(delete), deleteQueryId);
-        queryInfo = waitForQueryToFinish(queryInfo, deleteQueryId);
-        if (queryInfo.getState() != QueryState.FINISHED) {
-            //            transactionManager.asyncAbort(transactionId);
-            throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Failed to delete from materialized query table %s", materializedQueryTable));
+        if (!skipDelete) {
+            // materializedQueryTable is always the fully qualified name.
+            Delete delete = new Delete(new Table(materializedQueryTableName), refreshPredicateForMqt, true);
+            QueryId deleteQueryId = queryIdGenerator.createNextQueryId();
+            QueryInfo deleteQueryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(delete), Optional.of(delete), deleteQueryId);
+            deleteQueryInfo = waitForQueryToFinish(deleteQueryInfo, deleteQueryId);
+            if (deleteQueryInfo.getState() != QueryState.FINISHED) {
+                //            transactionManager.asyncAbort(transactionId);
+                throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Failed to delete from materialized query table %s", materializedQueryTable));
+            }
         }
 
         Insert insert = new Insert(materializedQueryTableName, Optional.empty(), mqtQuery, refreshPredicateForBaseTables, true);
-        queryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(insert), Optional.of(insert), session.getQueryId());
-        queryInfo = waitForQueryToFinish(queryInfo, session.getQueryId());
+        QueryInfo insertQueryInfo = queryManager.createQuery(session, SqlFormatter.formatSql(insert), Optional.of(insert), session.getQueryId());
+        insertQueryInfo = waitForQueryToFinish(insertQueryInfo, session.getQueryId());
 
-        if (queryInfo.getState() != QueryState.FINISHED) {
+        if (insertQueryInfo.getState() != QueryState.FINISHED) {
             //            transactionManager.asyncAbort(transactionId);
             throw new PrestoException(REFRESH_TABLE_FAILED, String.format("Failed to insert into materialized query table %s", materializedQueryTable));
         }
