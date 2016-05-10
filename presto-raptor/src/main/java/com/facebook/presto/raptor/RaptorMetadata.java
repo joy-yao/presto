@@ -59,6 +59,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -189,7 +190,7 @@ public class RaptorMetadata
         }
 
         columns.add(hiddenColumn(SHARD_UUID_COLUMN_NAME, VARCHAR));
-        return new ConnectorTableMetadata(tableName, columns);
+        return new ConnectorTableMetadata(tableName, columns, Collections.EMPTY_MAP, null, false, Optional.ofNullable(dao.getMaterializedQuery(handle.getTableId())));
     }
 
     @Override
@@ -490,6 +491,7 @@ public class RaptorMetadata
                 transactionId,
                 tableMetadata.getTable().getSchemaName(),
                 tableMetadata.getTable().getTableName(),
+                tableMetadata.getMaterializedQuery(),
                 columnHandles.build(),
                 columnTypes.build(),
                 Optional.ofNullable(sampleWeightColumnHandle),
@@ -558,7 +560,7 @@ public class RaptorMetadata
             MetadataDao dao = dbiHandle.attach(MetadataDao.class);
 
             Long distributionId = table.getDistributionId().isPresent() ? table.getDistributionId().getAsLong() : null;
-            long tableId = dao.insertTable(table.getSchemaName(), table.getTableName(), true, distributionId);
+            long tableId = dao.insertTable(table.getSchemaName(), table.getTableName(), true, distributionId, table.getMaterializedQuery().orElse(null));
 
             List<RaptorColumnHandle> sortColumnHandles = table.getSortColumnHandles();
             List<RaptorColumnHandle> bucketColumnHandles = table.getBucketColumnHandles();
