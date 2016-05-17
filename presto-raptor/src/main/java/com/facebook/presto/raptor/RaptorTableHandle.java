@@ -122,6 +122,12 @@ public final class RaptorTableHandle
     }
 
     @Override
+    public String getTableIdentifier(String schemaName, String tableName)
+    {
+        return Long.toString(tableId);
+    }
+
+    @Override
     public String toString()
     {
         return connectorId + ":" + schemaName + ":" + tableName + ":" + tableId;

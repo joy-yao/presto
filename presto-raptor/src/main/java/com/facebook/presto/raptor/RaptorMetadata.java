@@ -102,7 +102,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Collections.EMPTY_MAP;
-import static java.util.Collections.emptyMap;
 import static java.util.Collections.nCopies;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
@@ -119,6 +118,7 @@ public class RaptorMetadata
     private final JsonCodec<ShardInfo> shardInfoCodec;
     private final JsonCodec<ShardDelta> shardDeltaCodec;
     private final String connectorId;
+    private final JsonCodec<MaterializedQueryTableInfo> mqtInfoJsonCodec;
 
     private final AtomicReference<Long> currentTransactionId = new AtomicReference<>();
 
@@ -127,7 +127,8 @@ public class RaptorMetadata
             IDBI dbi,
             ShardManager shardManager,
             JsonCodec<ShardInfo> shardInfoCodec,
-            JsonCodec<ShardDelta> shardDeltaCodec)
+            JsonCodec<ShardDelta> shardDeltaCodec,
+            JsonCodec<MaterializedQueryTableInfo> mqtInfoJsonCodec)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.dbi = requireNonNull(dbi, "dbi is null");
@@ -135,6 +136,7 @@ public class RaptorMetadata
         this.shardManager = requireNonNull(shardManager, "shardManager is null");
         this.shardInfoCodec = requireNonNull(shardInfoCodec, "shardInfoCodec is null");
         this.shardDeltaCodec = requireNonNull(shardDeltaCodec, "shardDeltaCodec is null");
+        this.mqtInfoJsonCodec = requireNonNull(mqtInfoJsonCodec, "mqtInfoJsonCodec is null");
     }
 
     @Override
@@ -195,7 +197,7 @@ public class RaptorMetadata
         MaterializedQueryTableInfo materializedQueryTableInfo = null;
         String materializedQuery = dao.getMaterializedQuery(handle.getTableId());
         if (materializedQuery != null) {
-            materializedQueryTableInfo = new MaterializedQueryTableInfo(materializedQuery, emptyMap(), emptyMap());
+            materializedQueryTableInfo = mqtInfoJsonCodec.fromJson(materializedQuery);
         }
         return new ConnectorTableMetadata(tableName, columns, EMPTY_MAP, null, false, Optional.ofNullable(materializedQueryTableInfo));
     }
@@ -569,7 +571,7 @@ public class RaptorMetadata
             Long distributionId = table.getDistributionId().isPresent() ? table.getDistributionId().getAsLong() : null;
             String materializedQueryTableInfo = null;
             if (table.getMaterializedQueryTableInfo().isPresent()) {
-                materializedQueryTableInfo = table.getMaterializedQueryTableInfo().toString();
+                materializedQueryTableInfo = mqtInfoJsonCodec.toJson(table.getMaterializedQueryTableInfo().get());
             }
             long tableId = dao.insertTable(table.getSchemaName(), table.getTableName(), true, distributionId, materializedQueryTableInfo);
 

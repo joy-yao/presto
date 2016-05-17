@@ -274,7 +274,8 @@ public final class Session
                 startTime,
                 systemProperties,
                 catalogProperties,
-                sessionPropertyManager);
+                sessionPropertyManager,
+                preparedStatements);
     }
 
     public Session withCatalogProperty(String catalog, String key, String value)

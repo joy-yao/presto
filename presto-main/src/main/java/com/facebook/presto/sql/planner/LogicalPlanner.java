@@ -21,6 +21,7 @@ import com.facebook.presto.metadata.TableHandle;
 import com.facebook.presto.metadata.TableMetadata;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ColumnMetadata;
+import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.MaterializedQueryTableInfo;
 import com.facebook.presto.spi.PrestoException;
@@ -49,19 +50,14 @@ import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.NullLiteral;
 import com.facebook.presto.sql.tree.QualifiedName;
 import com.facebook.presto.sql.tree.Query;
-import com.facebook.presto.sql.tree.QuerySpecification;
-import com.facebook.presto.sql.tree.Relation;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.sql.tree.Table;
-import com.facebook.presto.sql.tree.WithQuery;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,6 +73,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toMap;
 
 public class LogicalPlanner
 {
@@ -165,7 +162,7 @@ public class LogicalPlanner
         RelationPlan plan = createRelationPlan(analysis, query);
         Optional<MaterializedQueryTableInfo> materializedQueryTableInfo = Optional.empty();
         if (analysis.isCreateMaterializedQueryTable()) {
-            materializedQueryTableInfo = Optional.of(getMaterializedQuery(((CreateTableAsSelect) analysis.getStatement()).getQuery(), session));
+            materializedQueryTableInfo = Optional.of(getMaterializedQuery(((CreateTableAsSelect) analysis.getStatement()).getQuery(), analysis.getTableHandles(), analysis.getColumnHandles(), session));
         }
 
         TableMetadata tableMetadata = createTableMetadata(destination,
@@ -215,12 +212,17 @@ public class LogicalPlanner
 //        return null;
 //    }
 
-    private MaterializedQueryTableInfo getMaterializedQuery(Query query, Session session)
+    private MaterializedQueryTableInfo getMaterializedQuery(Query query, Map<Table, TableHandle> tableHandles, Map<Field, ColumnHandle> columnHandles, Session session)
     {
         checkState(session.getCatalog().isPresent(), "catalog is not present in session");
         checkState(session.getSchema().isPresent(), "schema is not present in session");
 
         StringBuilder stringBuilder = new StringBuilder();
+//        Map<String, ConnectorTableHandle> tableHandleMap = new HashMap<>();
+//        Map<String, ColumnHandle> columnHandleMap = new HashMap<>();
+
+        Map<QualifiedName, QualifiedName> tableNameMap = new HashMap<>();
+
         SqlFormatter.Formatter formatter = new SqlFormatter.Formatter(stringBuilder, false)
         {
             @Override
@@ -234,11 +236,43 @@ public class LogicalPlanner
                     qualifiedName = QualifiedName.of(session.getCatalog().get(), qualifiedName.getPrefix().get().toString(), qualifiedName.getSuffix());
                 }
                 stringBuilder.append(qualifiedName.toString());
+                tableNameMap.put(node.getName(), qualifiedName);
+//
+//                Optional<TableHandle> tableHandle = metadata.getTableHandle(session, QualifiedObjectName.valueOf(qualifiedName.toString()));
+//                if (!tableHandle.isPresent()) {
+//                    throw new PrestoException(NOT_FOUND, format("Cannot find base table '%s'", qualifiedName));
+//                }
+//                tableHandleMap.put(qualifiedName.toString(), tableHandle.get().getConnectorHandle());
+
                 return null;
             }
+
+//            @Override
+//            protected Void  visitSelect(Select node, Integer indent)
+//            {
+//                List<SelectItem> selectItems = node.getSelectItems();
+//                for (SelectItem selectItem : selectItems) {
+//                    if (selectItem instanceof SingleColumn) {
+//                        SingleColumn column = (SingleColumn) selectItem;
+//                        System.out.println(column);
+//                    }
+//                    else {
+//                        AllColumns allColumns = (AllColumns) selectItem;
+//                        System.out.println(allColumns);
+//                    }
+//                }
+//                return null;
+//            }
         };
 
         formatter.process(query, 0);
+        Map<String, ConnectorTableHandle> tableHandleMap = tableHandles.entrySet().stream()
+//                .map(entry -> new Map.Entry(entry.getKey().toString(), entry.getValue()))
+                .collect(toMap(entry -> tableNameMap.get(entry.getKey().getName()).toString(), entry -> entry.getValue().getConnectorHandle()));
+        Map<String, ColumnHandle> columnHandleMap = columnHandles.entrySet().stream()
+                .collect(toMap(entry -> entry.getKey().toString(), entry -> entry.getValue()));
+
+//        return new MaterializedQueryTableInfo(stringBuilder.toString(), tableHandleMap, columnHandleMap);
         return new MaterializedQueryTableInfo(stringBuilder.toString(), emptyMap(), emptyMap());
     }
 

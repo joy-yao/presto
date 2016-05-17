@@ -33,6 +33,7 @@ import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.ConnectorViewDefinition;
+import com.facebook.presto.spi.MaterializedQueryTableInfo;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
@@ -86,6 +87,7 @@ public class TestRaptorMetadata
 {
     private static final JsonCodec<ShardInfo> SHARD_INFO_CODEC = jsonCodec(ShardInfo.class);
     private static final JsonCodec<ShardDelta> SHARD_DELTA_CODEC = jsonCodec(ShardDelta.class);
+    private static final JsonCodec<MaterializedQueryTableInfo> MQT_INFO = jsonCodec(MaterializedQueryTableInfo.class);
     private static final SchemaTableName DEFAULT_TEST_ORDERS = new SchemaTableName("test", "orders");
     private static final SchemaTableName DEFAULT_TEST_LINEITEMS = new SchemaTableName("test", "lineitems");
     private static final ConnectorSession SESSION = new TestingConnectorSession(
@@ -112,7 +114,7 @@ public class TestRaptorMetadata
         nodeManager.addCurrentNodeDatasource(connectorId.toString());
         NodeSupplier nodeSupplier = new RaptorNodeSupplier(nodeManager, connectorId);
         shardManager = createShardManager(dbi, nodeSupplier, systemTicker());
-        metadata = new RaptorMetadata(connectorId.toString(), dbi, shardManager, SHARD_INFO_CODEC, SHARD_DELTA_CODEC);
+        metadata = new RaptorMetadata(connectorId.toString(), dbi, shardManager, SHARD_INFO_CODEC, SHARD_DELTA_CODEC, MQT_INFO);
     }
 
     @AfterMethod(alwaysRun = true)

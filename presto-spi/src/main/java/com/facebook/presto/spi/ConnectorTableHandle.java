@@ -15,4 +15,8 @@ package com.facebook.presto.spi;
 
 public interface ConnectorTableHandle
 {
+    default String getTableIdentifier(String schemaName, String tableName)
+    {
+        return schemaName + "." + tableName;
+    }
 }

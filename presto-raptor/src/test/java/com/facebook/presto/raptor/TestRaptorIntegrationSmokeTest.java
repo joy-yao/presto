@@ -215,8 +215,8 @@ public class TestRaptorIntegrationSmokeTest
                 "REFRESH ON DEMAND", 0);
 
         // Refresh both materialized tables with no predicate
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt1', '', '')");
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt2', '', '')");
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh('raptor.tpch.test_refresh_mqt1', '', '')");
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh('raptor.tpch.test_refresh_mqt2', '', '')");
 
         MaterializedResult materializedRows1 = computeActual("SELECT a, b, c FROM test_refresh_mqt1 ORDER BY a, b");
         assertEquals(materializedRows1.getMaterializedRows().get(0).getField(0), 1);
@@ -250,8 +250,8 @@ public class TestRaptorIntegrationSmokeTest
         queryRunner.execute(getSession(), "INSERT INTO test_refresh_base values (1, 2, 10), (2, 3, 5), (10, 20, 5)");
 
         // Refresh both materialized tables with predicate
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt1', '{\"tpch.test_refresh_base\":\"a > 1\"}', 'a > 1')");
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table('raptor.tpch.test_refresh_mqt2', '{\"test_refresh_base\":\"a > 1\"}', 'a > 1')");
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh('raptor.tpch.test_refresh_mqt1', '{\"tpch.test_refresh_base\":\"a > 1\"}', 'a > 1')");
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh('raptor.tpch.test_refresh_mqt2', '{\"test_refresh_base\":\"a > 1\"}', 'a > 1')");
 
         materializedRows1 = computeActual("SELECT a, b, c FROM test_refresh_mqt1 ORDER BY a, b");
         assertEquals(materializedRows1.getMaterializedRows().get(0).getField(0), 1);
@@ -342,11 +342,11 @@ public class TestRaptorIntegrationSmokeTest
         queryRunner.execute(getSession(), "INSERT INTO test_mqt_fact values (10, 100, '2015-02-01', 22), (11, 100, '2015-02-02', 22), (12, 200, '2015-02-02', 23)");
 
         // Refresh both materialized tables with predicate
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table(" +
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh(" +
                 "'raptor.tpch.test_refresh_mqt_join_1', " +
                 "'{\"raptor.tpch.test_mqt_fact\":\"ds > ''2015-02-01''\"}', " +
                 "'ds > ''2015-02-01''')");
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table(" +
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh(" +
                 "'raptor.tpch.test_refresh_mqt_join_2', " +
                 "'{\"test_mqt_fact\":\"ds > ''2015-02-01''\"}', " +
                 "'ds > ''2015-02-01''')");
@@ -389,11 +389,11 @@ public class TestRaptorIntegrationSmokeTest
         queryRunner.execute(getSession(), "INSERT INTO test_mqt_fact values (20, 100, '2015-02-01', 100), (21, 100, '2015-02-02', 122), (22, 200, '2015-02-03', 123)");
 
         // Refresh both materialized tables with predicate
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table(" +
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh(" +
                 "'raptor.tpch.test_refresh_mqt_join_1', " +
                 "'{\"raptor.tpch.test_mqt_fact\":\"ds = ''2015-02-02'' OR ds = ''2015-02-03''\"}', " +
                 "'ds > ''2015-02-01''')");
-        queryRunner.execute(getSession(), "CALL system.runtime.refresh_materialized_query_table(" +
+        queryRunner.execute(getSession(), "CALL system.mqt.admin_refresh(" +
                 "'raptor.tpch.test_refresh_mqt_join_2', " +
                 "'{\"raptor.tpch.test_mqt_fact\":\"ds = ''2015-02-02''\", \"raptor.tpch.test_mqt_cust\":\"cust_id = 100\"}', " +
                 "'ds = ''2015-02-02'' AND name = ''Customer1''')");

@@ -338,6 +338,11 @@ public class Analysis
         return tables.get(table);
     }
 
+    public Map<Table, TableHandle> getTableHandles()
+    {
+        return tables;
+    }
+
     public void registerTable(Table table, TableHandle handle)
     {
         tables.put(table, handle);
@@ -390,6 +395,11 @@ public class Analysis
     public ColumnHandle getColumn(Field field)
     {
         return columns.get(field);
+    }
+
+    public Map<Field, ColumnHandle> getColumnHandles()
+    {
+        return columns;
     }
 
     public void setCreateTableDestination(QualifiedObjectName destination)
