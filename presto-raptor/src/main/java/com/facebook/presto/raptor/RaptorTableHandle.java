@@ -14,6 +14,7 @@
 package com.facebook.presto.raptor;
 
 import com.facebook.presto.spi.ConnectorTableHandle;
+import com.facebook.presto.spi.TableIdentifier;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -122,9 +123,22 @@ public final class RaptorTableHandle
     }
 
     @Override
-    public String getTableIdentifier(String schemaName, String tableName)
+    public RaptorTableIdentifier getTableIdentifier()
     {
-        return Long.toString(tableId);
+        return new RaptorTableIdentifier(tableId);
+    }
+
+    public byte[] serialize()
+    {
+        return String.valueOf(tableId).getBytes();
+    }
+
+    public TableIdentifier deserialize(byte[] bytes)
+    {
+        if (bytes.length == 0) {
+            throw new RuntimeException("Wrong bytes " + bytes);
+        }
+        return new RaptorTableIdentifier(Long.parseLong(bytes.toString()));
     }
 
     @Override

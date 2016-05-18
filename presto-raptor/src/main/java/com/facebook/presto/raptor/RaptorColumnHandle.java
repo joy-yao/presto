@@ -133,4 +133,23 @@ public final class RaptorColumnHandle
     {
         return new RaptorColumnHandle(connectorId, SHARD_UUID_COLUMN_NAME, SHARD_UUID_COLUMN_ID, VARCHAR);
     }
+
+    @Override
+    public RaptorColumnIdentifier getTColumnIdentifier()
+    {
+        return new RaptorColumnIdentifier(columnId);
+    }
+
+    public byte[] serialize()
+    {
+        return String.valueOf(columnId).getBytes();
+    }
+
+    public RaptorColumnIdentifier deserialize(byte[] bytes)
+    {
+        if (bytes.length == 0) {
+            throw new RuntimeException("Wrong bytes " + bytes);
+        }
+        return new RaptorColumnIdentifier(Long.parseLong(bytes.toString()));
+    }
 }

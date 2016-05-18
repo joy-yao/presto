@@ -24,14 +24,14 @@ import static java.util.Objects.requireNonNull;
 public class MaterializedQueryTableInfo
 {
     private final String query;
-    private final Map<String, ConnectorTableHandle> baseTables;
-    private final Map<String, ColumnHandle> baseTableColumns;
+    private final Map<String, byte[]> baseTables;
+    private final Map<String, byte[]> baseTableColumns;
 
     @JsonCreator
     public MaterializedQueryTableInfo(
             @JsonProperty("query") String query,
-            @JsonProperty("baseTables") Map<String, ConnectorTableHandle> baseTables,
-            @JsonProperty("baseTableColumns") Map<String, ColumnHandle> baseTableColumns)
+            @JsonProperty("baseTables") Map<String, byte[]> baseTables,
+            @JsonProperty("baseTableColumns") Map<String, byte[]> baseTableColumns)
     {
         this.query = requireNonNull(query, "query is null");
         this.baseTables = requireNonNull(baseTables, "baseTables is null");
@@ -45,13 +45,13 @@ public class MaterializedQueryTableInfo
     }
 
     @JsonProperty
-    public Map<String, ConnectorTableHandle> getBaseTables()
+    public Map<String, byte[]> getBaseTables()
     {
         return baseTables;
     }
 
     @JsonProperty
-    public Map<String, ColumnHandle> getBaseTableColumns()
+    public Map<String, byte[]> getBaseTableColumns()
     {
         return baseTableColumns;
     }

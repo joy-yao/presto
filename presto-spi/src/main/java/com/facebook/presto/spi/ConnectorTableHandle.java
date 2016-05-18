@@ -15,8 +15,21 @@ package com.facebook.presto.spi;
 
 public interface ConnectorTableHandle
 {
-    default String getTableIdentifier(String schemaName, String tableName)
+    default TableIdentifier getTableIdentifier()
     {
-        return schemaName + "." + tableName;
+        return new TableIdentifier();
+    }
+
+    default byte[] serialize()
+    {
+        return new byte[0];
+    }
+
+    default TableIdentifier deserialize(byte[] bytes)
+    {
+        if (bytes.length == 0) {
+            return new TableIdentifier();
+        }
+        throw new RuntimeException("Wrong bytes " + bytes);
     }
 }

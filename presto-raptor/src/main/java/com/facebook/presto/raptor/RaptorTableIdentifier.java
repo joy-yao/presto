@@ -11,25 +11,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.spi;
+package com.facebook.presto.raptor;
 
-public interface ColumnHandle
+import com.facebook.presto.spi.TableIdentifier;
+
+public class RaptorTableIdentifier
+        extends TableIdentifier
 {
-    default ColumnIdentifier getTColumnIdentifier()
-    {
-        return new ColumnIdentifier();
+    private final long tableId;
+    public RaptorTableIdentifier(long tableId) {
+        this.tableId = tableId;
     }
 
-    default byte[] serialize()
+    @Override
+    public boolean equals(Object o)
     {
-        return new byte[0];
-    }
-
-    default ColumnIdentifier deserialize(byte[] bytes)
-    {
-        if (bytes.length == 0) {
-            return new ColumnIdentifier();
+        if (this == o) {
+            return true;
         }
-        throw new RuntimeException("Wrong bytes " + bytes);
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RaptorTableIdentifier that = (RaptorTableIdentifier) o;
+        return tableId == that.tableId;
     }
 }

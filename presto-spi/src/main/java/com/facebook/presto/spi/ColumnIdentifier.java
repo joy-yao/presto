@@ -13,23 +13,11 @@
  */
 package com.facebook.presto.spi;
 
-public interface ColumnHandle
+public class ColumnIdentifier
 {
-    default ColumnIdentifier getTColumnIdentifier()
+    @Override
+    public boolean equals(Object o)
     {
-        return new ColumnIdentifier();
-    }
-
-    default byte[] serialize()
-    {
-        return new byte[0];
-    }
-
-    default ColumnIdentifier deserialize(byte[] bytes)
-    {
-        if (bytes.length == 0) {
-            return new ColumnIdentifier();
-        }
-        throw new RuntimeException("Wrong bytes " + bytes);
+        return true;
     }
 }
