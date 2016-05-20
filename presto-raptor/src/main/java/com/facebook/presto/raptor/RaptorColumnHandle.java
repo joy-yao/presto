@@ -150,6 +150,6 @@ public final class RaptorColumnHandle
         if (bytes.length == 0) {
             throw new RuntimeException("Wrong bytes " + bytes);
         }
-        return new RaptorColumnIdentifier(Long.parseLong(bytes.toString()));
+        return new RaptorColumnIdentifier(Long.parseLong(new String(bytes)));
     }
 }

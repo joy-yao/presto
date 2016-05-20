@@ -21,7 +21,6 @@ import com.facebook.presto.metadata.TableHandle;
 import com.facebook.presto.metadata.TableMetadata;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ColumnMetadata;
-import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.MaterializedQueryTableInfo;
 import com.facebook.presto.spi.PrestoException;
@@ -71,7 +70,6 @@ import static com.facebook.presto.sql.planner.plan.TableWriterNode.WriterTarget;
 import static com.facebook.presto.util.ImmutableCollectors.toImmutableList;
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
-import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toMap;
 
@@ -266,14 +264,14 @@ public class LogicalPlanner
         };
 
         formatter.process(query, 0);
-        Map<String, ConnectorTableHandle> tableHandleMap = tableHandles.entrySet().stream()
+        Map<String, byte[]> tableIdentifierMap = tableHandles.entrySet().stream()
 //                .map(entry -> new Map.Entry(entry.getKey().toString(), entry.getValue()))
-                .collect(toMap(entry -> tableNameMap.get(entry.getKey().getName()).toString(), entry -> entry.getValue().getConnectorHandle()));
-        Map<String, ColumnHandle> columnHandleMap = columnHandles.entrySet().stream()
-                .collect(toMap(entry -> entry.getKey().toString(), entry -> entry.getValue()));
+                .collect(toMap(entry -> tableNameMap.get(entry.getKey().getName()).toString(), entry -> entry.getValue().getConnectorHandle().serialize()));
+        Map<String, byte[]> columnIdentifierMap = columnHandles.entrySet().stream()
+                .collect(toMap(entry -> entry.getKey().getName().get(), entry -> entry.getValue().serialize()));
 
-//        return new MaterializedQueryTableInfo(stringBuilder.toString(), tableHandleMap, columnHandleMap);
-        return new MaterializedQueryTableInfo(stringBuilder.toString(), emptyMap(), emptyMap());
+        return new MaterializedQueryTableInfo(stringBuilder.toString(), tableIdentifierMap, columnIdentifierMap);
+//        return new MaterializedQueryTableInfo(stringBuilder.toString(), emptyMap(), emptyMap());
     }
 
     private RelationPlan createInsertPlan(Analysis analysis, Insert insertStatement)

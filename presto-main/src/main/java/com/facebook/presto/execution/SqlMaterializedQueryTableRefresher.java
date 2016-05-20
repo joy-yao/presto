@@ -19,9 +19,13 @@ import com.facebook.presto.metadata.QualifiedObjectName;
 import com.facebook.presto.metadata.TableHandle;
 import com.facebook.presto.operator.ExchangeClient;
 import com.facebook.presto.operator.ExchangeClientSupplier;
+import com.facebook.presto.spi.ColumnHandle;
+import com.facebook.presto.spi.ColumnIdentifier;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorTableMetadata;
+import com.facebook.presto.spi.MaterializedQueryTableInfo;
 import com.facebook.presto.spi.PrestoException;
+import com.facebook.presto.spi.TableIdentifier;
 import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.BooleanLiteral;
@@ -40,17 +44,20 @@ import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Table;
 import com.facebook.presto.transaction.TransactionId;
 import com.facebook.presto.transaction.TransactionManager;
+import com.google.common.collect.Maps;
 import io.airlift.units.Duration;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import static com.facebook.presto.execution.QueryState.FINISHED;
 import static com.facebook.presto.server.StatementResource.Query.isQueryStarted;
 import static com.facebook.presto.server.StatementResource.Query.updateExchangeClient;
+import static com.facebook.presto.spi.StandardErrorCode.NOT_FOUND;
 import static com.facebook.presto.spi.StandardErrorCode.REFRESH_TABLE_FAILED;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
@@ -115,11 +122,67 @@ public class SqlMaterializedQueryTableRefresher
             throw new PrestoException(REFRESH_TABLE_FAILED, format("Table '%s' is not a materialized query table", materializedQueryTable));
         }
 
+        MaterializedQueryTableInfo materializedQueryTableInfo = tableMetadata.getMaterializedQueryTableInfo().get();
+        Map<String, Map<String, byte[]>> columnIdentities = Maps.newHashMap();
+        for (Map.Entry<String, byte[]> baseColumnIdentityEntry : materializedQueryTableInfo.getBaseTableColumns().entrySet()) {
+            String columnName = baseColumnIdentityEntry.getKey();
+            String tableName = columnName.substring(0, columnName.lastIndexOf("."));
+            if (!columnIdentities.containsKey(tableName)) {
+                columnIdentities.put(tableName, new HashMap<>());
+            }
+            columnIdentities.get(tableName).put(columnName.substring(columnName.lastIndexOf(".") + 1), baseColumnIdentityEntry.getValue());
+        }
+
+        for (Map.Entry<String, byte[]> baseTableIdentifierEntry: materializedQueryTableInfo.getBaseTables().entrySet())
+        {
+            String baseTableName = baseTableIdentifierEntry.getKey();
+            Optional<TableHandle> currentTableHandle = metadata.getTableHandle(session, QualifiedObjectName.valueOf(baseTableName));
+            if (!currentTableHandle.isPresent()) {
+                throw new PrestoException(NOT_FOUND, format("Base table '%s' for materialized query table '%s ' does not exist any more", baseTableName, materializedQueryTable));
+            }
+            TableIdentifier currentTableIdentifier = currentTableHandle.get().getConnectorHandle().getTableIdentifier();
+            TableIdentifier oldTableIdentifier = currentTableHandle.get().getConnectorHandle().deserialize(baseTableIdentifierEntry.getValue());
+            if (!currentTableIdentifier.equals(oldTableIdentifier)) {
+                throw new PrestoException(REFRESH_TABLE_FAILED, format("Table identifier for base table '%s' has changed from %s to %s.", baseTableName, oldTableIdentifier, currentTableIdentifier));
+            }
+
+            Map<String, byte[]> oldColumnHandles = columnIdentities.get(baseTableName.substring(baseTableName.lastIndexOf(".") + 1));
+            Map<String, ColumnHandle> currentColumnHandles = metadata.getColumnHandles(session, currentTableHandle.get());
+
+            for (Map.Entry<String, byte[]> oldColumn : oldColumnHandles.entrySet()) {
+                String columnName = oldColumn.getKey();
+                if (!currentColumnHandles.containsKey(columnName)) {
+                    throw new PrestoException(REFRESH_TABLE_FAILED, format("Column '%s' for base table '%s' no longer exists", baseTableName, columnName));
+                }
+                ColumnIdentifier currentColumnIdentifier = currentColumnHandles.get(columnName).getTColumnIdentifier();
+                ColumnIdentifier oldColumnIndentifier = currentColumnHandles.get(columnName).deserialize(oldColumn.getValue());
+                if (!currentColumnIdentifier.equals(oldColumnIndentifier)) {
+                    throw new PrestoException(REFRESH_TABLE_FAILED, format("Identity for base table '%s' and column '%s' has changed from %s to %s.", baseTableName, columnName, oldColumnIndentifier, currentColumnIdentifier));
+                }
+            }
+        }
+
+        //        for (Map.Entry<String, byte[]> columnIdentifierEntry: materializedQueryTableInfo.getBaseTableColumns().entrySet())
+//        {
+//            String baseTableColumnName = columnIdentifierEntry.getKey();
+//            QualifiedName qualifiedName = QualifiedName
+//            Optional<TableHandle> currentTableHandle = metadata.getColumnHandles(session, QualifiedObjectName.valueOf(baseTableName));
+//            if (!currentTableHandle.isPresent()) {
+//                throw new PrestoException(NOT_FOUND, format("Base table '%s' for materialized query table '%s ' does not exist any more", baseTableName, materializedQueryTable));
+//            }
+//            TableIdentifier currentTableIdentifier = currentTableHandle.get().getConnectorHandle().getTableIdentifier();
+//            TableIdentifier oldTableIdentifier = currentTableHandle.get().getConnectorHandle().deserialize(baseTableIdentifierEntry.getValue());
+//            if (!currentTableIdentifier.equals(oldTableIdentifier)) {
+//                throw new PrestoException(REFRESH_TABLE_FAILED, format("Table identifier for base table '%s' has changed from %s to %s.", baseTableName, oldTableIdentifier, currentTableIdentifier));
+//            }
+//        }
+
         session = session.withCatalogAndSchema(tableHandle.get().getConnectorId(), tableMetadata.getTable().getSchemaName());
 
         transactionManager.asyncCommit(transactionId);
         session = session.withoutTransactionId();
-        Query materializedQuery = (Query) sqlParser.createStatement(tableMetadata.getMaterializedQueryTableInfo().get().getQuery());
+
+        Query materializedQuery = (Query) sqlParser.createStatement(materializedQueryTableInfo.getQuery());
         QualifiedName materializedQueryTableName = DereferenceExpression.getQualifiedName((DereferenceExpression) sqlParser.createExpression(materializedQueryTable));
 
         Optional<Expression> changesToMaterializedQueryTable = Optional.empty();

@@ -38,6 +38,7 @@ import com.facebook.presto.spi.session.PropertyMetadata;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeSignature;
 import com.facebook.presto.sql.ExpressionUtils;
+import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.parser.ParsingException;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.planner.DependencyExtractor;
@@ -818,6 +819,11 @@ class StatementAnalyzer
         analysis.setCreateTableAsSelectWithData(node.isWithData());
 
         analysis.setCreateMaterializedQueryTable(node.isMaterializedQueryTable());
+        Query query = node.getQuery();
+
+        if (node.isMaterializedQueryTable()) {
+            query = analyze
+        }
 
         // analyze the query that creates the table
         RelationType descriptor = process(node.getQuery(), context);
@@ -827,6 +833,49 @@ class StatementAnalyzer
         validateColumns(node, descriptor);
 
         return new RelationType(Field.newUnqualified("rows", BIGINT));
+    }
+
+    private Query formatQuery(Query query)
+    {
+        StringBuilder stringBuilder = new StringBuilder();
+        Map<QualifiedName, QualifiedName> tableNameMap = new HashMap<>();
+
+        SqlFormatter.Formatter formatter = new SqlFormatter.Formatter(stringBuilder, false)
+        {
+            @Override
+            protected Void visitTable(Table node, Integer indent)
+            {
+                QualifiedName qualifiedName = node.getName();
+                if (qualifiedName.getParts().size() == 1) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), session.getSchema().get(), qualifiedName.getSuffix());
+                }
+                else if (qualifiedName.getParts().size() == 2) {
+                    qualifiedName = QualifiedName.of(session.getCatalog().get(), qualifiedName.getPrefix().get().toString(), qualifiedName.getSuffix());
+                }
+                stringBuilder.append(qualifiedName.toString());
+                tableNameMap.put(node.getName(), qualifiedName);
+                return null;
+            }
+
+//            @Override
+//            protected Void  visitSelect(Select node, Integer indent)
+//            {
+//                List<SelectItem> selectItems = node.getSelectItems();
+//                for (SelectItem selectItem : selectItems) {
+//                    if (selectItem instanceof SingleColumn) {
+//                        SingleColumn column = (SingleColumn) selectItem;
+//                        System.out.println(column);
+//                    }
+//                    else {
+//                        AllColumns allColumns = (AllColumns) selectItem;
+//                        System.out.println(allColumns);
+//                    }
+//                }
+//                return null;
+//            }
+        };
+
+        formatter.process(query, 0);
     }
 
     @Override

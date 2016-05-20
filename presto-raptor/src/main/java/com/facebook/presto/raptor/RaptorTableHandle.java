@@ -138,7 +138,7 @@ public final class RaptorTableHandle
         if (bytes.length == 0) {
             throw new RuntimeException("Wrong bytes " + bytes);
         }
-        return new RaptorTableIdentifier(Long.parseLong(bytes.toString()));
+        return new RaptorTableIdentifier(Long.parseLong(new String(bytes)));
     }
 
     @Override
